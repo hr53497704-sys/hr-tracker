@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>鴻睿自動化 - 客戶問題追蹤</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f8;min-height:100vh;display:flex;justify-content:center;padding:0}
+.app{width:100%;max-width:480px;min-height:100vh;background:#fff;display:flex;flex-direction:column;position:relative;box-shadow:0 0 20px rgba(0,0,0,0.1)}
+.topbar{background:#2D5A8C;padding:12px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+.logo-img{width:44px;height:44px;object-fit:contain;background:#fff;border-radius:8px;padding:3px;flex-shrink:0}
+.topbar-text{flex:1}
+.topbar-company{font-size:11px;color:rgba(255,255,255,0.75)}
+.topbar-title{font-size:16px;font-weight:600;color:#fff}
+.save-btn{font-size:11px;padding:6px 11px;background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.save-btn:active{background:rgba(255,255,255,0.35)}
+.sync-bar{font-size:11px;color:#555;text-align:right;padding:4px 12px;background:#f8f9fa;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;justify-content:flex-end;gap:5px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot-ok{background:#3B6D11}.dot-err{background:#993C1D}.dot-sync{background:#854F0B}
+.tab-bar{display:flex;background:#f8f9fa;border-bottom:1px solid #e0e0e0;position:sticky;top:68px;z-index:99}
+.tab{flex:1;padding:10px 4px;font-size:12px;text-align:center;cursor:pointer;color:#666;border-bottom:2px solid transparent}
+.tab.active{color:#2D5A8C;border-bottom:2px solid #2D5A8C;font-weight:600}
+.search-bar{padding:9px 12px;background:#f8f9fa;border-bottom:1px solid #e0e0e0;display:flex;gap:7px}
+.search-bar input{flex:1;font-size:13px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;outline:none}
+.search-bar input:focus{border-color:#2D5A8C}
+.urg-btn{font-size:11px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;white-space:nowrap}
+.urg-btn.on{background:#EEF4FB;color:#2D5A8C;border-color:#2D5A8C;font-weight:600}
+.stats-bar{display:flex;gap:6px;padding:9px 12px;background:#f8f9fa;border-bottom:1px solid #e0e0e0}
+.stat-chip{flex:1;text-align:center;background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:6px 4px}
+.stat-num{font-size:16px;font-weight:700;color:#333}
+.stat-lbl{font-size:10px;color:#888;margin-top:1px}
+.content{flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.issue-card{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:12px;cursor:pointer;transition:all 0.15s;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.issue-card:active{background:#f5f5f5}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.badge{font-size:10px;padding:3px 8px;border-radius:99px;font-weight:600}
+.s-open{background:#FAECE7;color:#993C1D}
+.s-progress{background:#FAEEDA;color:#854F0B}
+.s-done{background:#EAF3DE;color:#3B6D11}
+.s-wait{background:#EEF4FB;color:#185FA5}
+.client-tag{background:#f0f0f0;border:1px solid #e0e0e0;border-radius:4px;padding:2px 6px;font-size:11px;color:#555}
+.card-title{font-size:14px;font-weight:600;color:#222;margin-bottom:5px;line-height:1.4}
+.card-meta{font-size:11px;color:#888;display:flex;gap:8px;flex-wrap:wrap}
+.due-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.due-tag{font-size:10px;padding:2px 7px;border-radius:4px}
+.due-now{background:#EAF3DE;color:#3B6D11;border:1px solid #C0DD97}
+.due-old{background:#f5f5f5;color:#999;border:1px solid #e0e0e0;text-decoration:line-through}
+.fab{position:fixed;bottom:24px;right:50%;transform:translateX(210px);background:#2D5A8C;color:#fff;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:26px;box-shadow:0 3px 12px rgba(45,90,140,0.4);border:none;z-index:50}
+@media(max-width:480px){.fab{right:16px;transform:none}}
+.page{display:none;flex-direction:column;flex:1}
+.page.active{display:flex}
+.back-btn{padding:12px 14px;background:#f8f9fa;border-bottom:1px solid #e0e0e0;font-size:13px;color:#2D5A8C;cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:500}
+.detail-body{padding:14px;flex:1;overflow-y:auto}
+.detail-title{font-size:16px;font-weight:600;color:#222;margin-bottom:12px;line-height:1.5}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
+.info-lbl{color:#888}
+.info-val{color:#222;font-weight:500;text-align:right;max-width:60%}
+.desc-box{margin-top:10px;font-size:13px;color:#555;line-height:1.7;background:#f8f9fa;padding:10px 12px;border-radius:8px;border:1px solid #e8e8e8}
+.section{margin-top:12px}
+.section-title{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+.due-history{display:flex;flex-direction:column;gap:5px}
+.due-item{display:flex;align-items:center;gap:8px;font-size:13px}
+.due-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.crossed{text-decoration:line-through;color:#bbb}
+.latest-due{color:#3B6D11;font-weight:600}
+.reply-list{display:flex;flex-direction:column;gap:6px}
+.reply-card{background:#f8f9fa;border:1px solid #e8e8e8;border-radius:8px;padding:10px}
+.reply-date{font-size:11px;color:#888;margin-bottom:4px}
+.reply-text{font-size:13px;color:#333;line-height:1.6}
+.admin-area{margin-top:14px;padding-top:12px;border-top:1px solid #eee}
+.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.admin-btn{padding:9px;background:#EEF4FB;color:#2D5A8C;border:1px solid #2D5A8C;border-radius:8px;font-size:13px;cursor:pointer;text-align:center;font-weight:500}
+.danger-btn{background:#FAECE7;color:#993C1D;border-color:#993C1D}
+.form-label{font-size:12px;color:#666;margin-bottom:4px;margin-top:10px;display:block}
+.form-input{width:100%;font-size:13px;padding:9px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;outline:none;color:#333}
+.form-input:focus{border-color:#2D5A8C}
+.status-select{width:100%;font-size:13px;padding:9px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#333;margin-top:6px}
+.add-row{display:flex;gap:7px;margin-top:7px}
+.add-row input{flex:1;font-size:13px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;outline:none;color:#333}
+.add-row input:focus{border-color:#2D5A8C}
+.blue-btn{padding:8px 14px;background:#2D5A8C;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap}
+.reply-input{width:100%;font-size:13px;padding:9px 10px;border:1px solid #ddd;border-radius:8px;resize:none;height:70px;outline:none;color:#333;margin-top:6px}
+.reply-input:focus{border-color:#2D5A8C}
+.lock-msg{text-align:center;font-size:12px;color:#bbb;padding:12px;background:#f8f9fa;border-radius:8px;margin-top:12px;border:1px solid #eee}
+.empty-msg{text-align:center;color:#bbb;font-size:13px;padding:40px 20px}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-end;justify-content:center}
+.overlay.show{display:flex}
+.modal{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:600;color:#222;margin-bottom:14px}
+.modal-btns{display:flex;gap:8px;margin-top:14px}
+.modal-btns button{flex:1;padding:10px;border-radius:10px;font-size:14px;cursor:pointer;font-weight:500}
+.btn-cancel{background:#f0f0f0;border:none;color:#555}
+.btn-save{background:#2D5A8C;color:#fff;border:none}
+.pin-box{padding:20px 16px;width:100%;max-width:480px}
+.pin-input{width:100%;font-size:20px;padding:10px;border:1px solid #ddd;border-radius:10px;text-align:center;letter-spacing:8px;outline:none;margin-top:10px}
+.pin-input:focus{border-color:#2D5A8C}
+.pin-err{color:#993C1D;font-size:12px;margin-top:6px;text-align:center;min-height:18px}
+.checkbox-row{display:flex;align-items:center;gap:8px;margin-top:12px}
+.checkbox-row input{width:18px;height:18px;cursor:pointer}
+.checkbox-row label{font-size:13px;color:#333;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <img class="logo-img" id="logoImg" alt="HR LOGO" />
+    <div class="topbar-text">
+      <div class="topbar-company">鴻睿自動化股份有限公司</div>
+      <div class="topbar-title">客戶問題追蹤系統</div>
+    </div>
+    <button class="save-btn" onclick="saveToSheet()" id="saveBtn">☁ 儲存</button>
+  </div>
+  <div class="sync-bar">
+    <span class="dot dot-sync" id="syncDot"></span>
+    <span id="syncText">連線中...</span>
+  </div>
+
+  <!-- 列表頁 -->
+  <div class="page active" id="listPage">
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchTab('all')">全部</div>
+      <div class="tab" onclick="switchTab('open')">待處理</div>
+      <div class="tab" onclick="switchTab('progress')">處理中</div>
+      <div class="tab" onclick="switchTab('done')">已完成</div>
+    </div>
+    <div class="search-bar">
+      <input id="searchInput" placeholder="🔍 搜尋工令、客戶、問題…" oninput="renderList()" />
+      <div class="urg-btn" id="urgBtn" onclick="toggleUrg()">🔴 急件</div>
+    </div>
+    <div class="stats-bar" id="statsBar"></div>
+    <div class="content" id="issueList"><div class="empty-msg">載入中...</div></div>
+    <button class="fab" onclick="openAdd()" title="新增問題">＋</button>
+  </div>
+
+  <!-- 詳細頁 -->
+  <div class="page" id="detailPage">
+    <div class="back-btn" onclick="showList()">← 返回列表</div>
+    <div class="detail-body" id="detailBody"></div>
+  </div>
+</div>
+
+<!-- 遮罩 -->
+<div class="overlay" id="overlay">
+  <div id="overlayContent"></div>
+</div>
+
+<script>
+// ===== 設定 =====
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxW9b_V3kLV40MgDVEuZLI7wTuzzodAzPVl7HrqXir_R0doAQAkVLfb06oW4NzQF8w7/exec';
+const PIN = '1234';
+LOGOEOF
+
+# 分開寫 LOGO
+echo "const LOGO_B64 = 'data:image/png;base64,$(cat /tmp/logo_b64.txt)';" >> /mnt/user-data/outputs/鴻睿客戶問題追蹤APP.html
+
+cat >> /mnt/user-data/outputs/鴻睿客戶問題追蹤APP.html << 'JSEOF'
+
+// ===== 狀態 =====
+let issues = [];
+let nextId = 100;
+let filterTab = 'all';
+let filterUrg = false;
+let isAdmin = false;
+let currentId = null;
+const SM = {open:'待處理',progress:'處理中',done:'已完成',wait:'等待中'};
+const SC = {open:'s-open',progress:'s-progress',done:'s-done',wait:'s-wait'};
+
+// ===== 初始化 =====
+document.getElementById('logoImg').src = LOGO_B64;
+
+function setSyncStatus(state, msg) {
+  const d = document.getElementById('syncDot');
+  d.className = 'dot dot-' + state;
+  document.getElementById('syncText').textContent = msg;
+}
+
+async function loadFromSheet() {
+  setSyncStatus('sync', '連線中...');
+  try {
+    const r = await fetch(SCRIPT_URL + '?action=load');
+    const data = await r.json();
+    if (data.issues && data.issues.length > 0) {
+      issues = data.issues.map(i => ({
+        ...i,
+        targetDates: Array.isArray(i.targetDates) ? i.targetDates : [],
+        replies: Array.isArray(i.replies) ? i.replies : []
+      }));
+      nextId = Math.max(...issues.map(i => parseInt(i.id)||0)) + 1;
+      setSyncStatus('ok', '已同步 · ' + new Date().toLocaleTimeString('zh-TW'));
+    } else {
+      issues = defaultData();
+      setSyncStatus('ok', '使用示範資料');
+    }
+  } catch(e) {
+    issues = defaultData();
+    setSyncStatus('err', '無法連線，使用離線資料');
+  }
+  renderList();
+}
+
+function defaultData() {
+  return [
+    {id:1,wo:'26189',client:'台灣杜邦',title:'高錳循環流量低下',status:'progress',urgent:true,date:'2025-06-20',dept:'製造部',assignee:'王大明',desc:'高錳酸鉀槽循環泵流量不足，影響電鍍均勻性。',targetDates:[{date:'2025-07-05',done:true},{date:'2025-07-20',done:false}],replies:[{date:'2025-06-21',text:'已確認濾芯堵塞，安排更換中。'}]},
+    {id:2,wo:'26190',client:'台灣杜邦',title:'鍍銅層厚度不均',status:'open',urgent:true,date:'2025-06-25',dept:'品管部',assignee:'李小花',desc:'客戶反映鍍銅層厚度偏差超標，要求原因分析。',targetDates:[{date:'2025-07-10',done:false}],replies:[]},
+    {id:3,wo:'26035',client:'乾坤科技',title:'電鍍槽液位感測異常',status:'done',urgent:false,date:'2025-06-10',dept:'製造部',assignee:'陳阿山',desc:'液位感測器誤報導致自動補液停止。',targetDates:[{date:'2025-06-15',done:true}],replies:[{date:'2025-06-11',text:'清潔感測器後恢復正常。'}]},
+  ];
+}
+
+async function saveToSheet() {
+  const btn = document.getElementById('saveBtn');
+  btn.textContent = '儲存中…';
+  setSyncStatus('sync', '儲存中...');
+  try {
+    const r = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({action:'save', issues})
+    });
+    const data = await r.json();
+    if (data.ok) {
+      setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
+      btn.textContent = '☁ 儲存';
+    } else throw new Error();
+  } catch(e) {
+    setSyncStatus('err', '儲存失敗，請重試');
+    btn.textContent = '❌ 重試';
+    setTimeout(() => btn.textContent = '☁ 儲存', 3000);
+  }
+}
+
+// ===== 列表 =====
+function switchTab(t) {
+  filterTab = t;
+  document.querySelectorAll('.tab').forEach((el,i) => {
+    el.classList.toggle('active', ['all','open','progress','done'][i] === t);
+  });
+  renderList();
+}
+
+function toggleUrg() {
+  filterUrg = !filterUrg;
+  document.getElementById('urgBtn').classList.toggle('on', filterUrg);
+  renderList();
+}
+
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  return issues.filter(i => {
+    if (filterTab !== 'all' && i.status !== filterTab) return false;
+    if (filterUrg && !i.urgent) return false;
+    if (q && !`${i.wo}${i.client}${i.title}${i.desc}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function renderList() {
+  const c = {open:0,progress:0,done:0,wait:0};
+  issues.forEach(i => c[i.status] = (c[i.status]||0)+1);
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-chip"><div class="stat-num">${issues.length}</div><div class="stat-lbl">全部</div></div>
+    <div class="stat-chip"><div class="stat-num" style="color:#993C1D">${c.open}</div><div class="stat-lbl">待處理</div></div>
+    <div class="stat-chip"><div class="stat-num" style="color:#854F0B">${c.progress}</div><div class="stat-lbl">處理中</div></div>
+    <div class="stat-chip"><div class="stat-num" style="color:#3B6D11">${c.done}</div><div class="stat-lbl">已完成</div></div>
+  `;
+  const data = getFiltered();
+  const list = document.getElementById('issueList');
+  if (!data.length) { list.innerHTML = '<div class="empty-msg">沒有符合的記錄</div>'; return; }
+  list.innerHTML = data.map(i => {
+    const dueTags = (i.targetDates||[]).map((d,idx) => {
+      const isLast = idx === i.targetDates.length-1;
+      return `<span class="due-tag ${d.done?'due-old':'due-now'}">📅 ${d.date}</span>`;
+    }).join('');
+    return `
+      <div class="issue-card" onclick="openDetail(${i.id})">
+        <div class="card-top">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span class="client-tag">${i.client}</span>
+            ${i.urgent ? '<span style="font-size:11px;color:#993C1D;font-weight:600">🔴 急件</span>' : ''}
+          </div>
+          <span class="badge ${SC[i.status]}">${SM[i.status]}</span>
+        </div>
+        <div class="card-title">${i.title}</div>
+        <div class="card-meta">
+          <span>工令 ${i.wo}</span>
+          <span>建立 ${i.date}</span>
+          <span>${i.dept||''}${i.assignee?' · '+i.assignee:''}</span>
+        </div>
+        ${dueTags ? '<div class="due-tags">'+dueTags+'</div>' : ''}
+      </div>`;
+  }).join('');
+}
+
+// ===== 詳細頁 =====
+function showList() {
+  document.getElementById('listPage').classList.add('active');
+  document.getElementById('detailPage').classList.remove('active');
+  currentId = null;
+  renderList();
+}
+
+function openDetail(id) {
+  currentId = id;
+  document.getElementById('listPage').classList.remove('active');
+  document.getElementById('detailPage').classList.add('active');
+  renderDetail();
+}
+
+function renderDetail() {
+  const i = issues.find(x => x.id === currentId);
+  if (!i) return;
+
+  const dueHTML = (i.targetDates||[]).length ? `
+    <div class="section">
+      <div class="section-title">預定完成日記錄</div>
+      <div class="due-history">
+        ${(i.targetDates||[]).map((d,idx) => {
+          const isLast = idx === i.targetDates.length-1;
+          return `<div class="due-item">
+            <div class="due-dot" style="background:${d.done?'#993C1D':'#3B6D11'}"></div>
+            <span class="${d.done?'crossed':isLast?'latest-due':''}">${d.date}${d.done?' （未完成延期）':isLast?' 【目前預定】':''}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  const repliesHTML = `
+    <div class="section">
+      <div class="section-title">處理紀錄（${(i.replies||[]).length} 則）</div>
+      <div class="reply-list">
+        ${(i.replies||[]).length ? (i.replies||[]).map(r => `
+          <div class="reply-card">
+            <div class="reply-date">${r.date}</div>
+            <div class="reply-text">${r.text}</div>
+          </div>`).join('') : '<div class="empty-msg" style="padding:12px">尚無處理紀錄</div>'}
+      </div>
+    </div>`;
+
+  const adminHTML = isAdmin ? `
+    <div class="admin-area">
+      <div class="section-title">生管操作區</div>
+      <div class="admin-grid">
+        <div class="admin-btn" onclick="openEdit()">✏ 編輯問題</div>
+        <div class="admin-btn danger-btn" onclick="markDelayed()">📅 標記延期</div>
+      </div>
+      <label class="form-label">更改狀態</label>
+      <select class="status-select" onchange="changeStatus(this.value)">
+        ${Object.entries(SM).map(([k,v]) => `<option value="${k}" ${i.status===k?'selected':''}>${v}</option>`).join('')}
+      </select>
+      <label class="form-label">新增預定完成日</label>
+      <div class="add-row">
+        <input type="date" id="newDue" />
+        <button class="blue-btn" onclick="addDue()">新增</button>
+      </div>
+      <label class="form-label">新增回覆紀錄</label>
+      <textarea class="reply-input" id="replyInput" placeholder="輸入處理進度或回覆內容…"></textarea>
+      <div style="margin-top:6px">
+        <button class="blue-btn" style="width:100%" onclick="addReply()">送出回覆</button>
+      </div>
+    </div>` : '<div class="lock-msg">🔒 需要輸入生管密碼才能編輯</div>';
+
+  document.getElementById('detailBody').innerHTML = `
+    <div class="detail-title">${i.urgent?'🔴 ':''}${i.title}</div>
+    <div class="info-row"><span class="info-lbl">客戶</span><span class="info-val">${i.client}</span></div>
+    <div class="info-row"><span class="info-lbl">工令號碼</span><span class="info-val">${i.wo}</span></div>
+    <div class="info-row"><span class="info-lbl">狀態</span><span class="info-val"><span class="badge ${SC[i.status]}">${SM[i.status]}</span></span></div>
+    <div class="info-row"><span class="info-lbl">建立日期</span><span class="info-val">${i.date}</span></div>
+    <div class="info-row"><span class="info-lbl">部門 / 人員</span><span class="info-val">${(i.dept||'—')+' / '+(i.assignee||'—')}</span></div>
+    <div class="desc-box">${i.desc||'（無說明）'}</div>
+    ${dueHTML}
+    ${repliesHTML}
+    ${adminHTML}
+  `;
+}
+
+function changeStatus(st) {
+  const i = issues.find(x => x.id === currentId);
+  if (i) { i.status = st; renderDetail(); }
+}
+
+function markDelayed() {
+  const i = issues.find(x => x.id === currentId);
+  if (!i.targetDates||!i.targetDates.length) { alert('尚無預定完成日'); return; }
+  const last = i.targetDates[i.targetDates.length-1];
+  if (last.done) { alert('最後一筆已是延期標記'); return; }
+  if (!confirm(`確定將「${last.date}」標記為延期未完成？`)) return;
+  last.done = true;
+  renderDetail();
+}
+
+function addDue() {
+  const d = document.getElementById('newDue').value;
+  if (!d) { alert('請選擇日期'); return; }
+  const i = issues.find(x => x.id === currentId);
+  if (!i.targetDates) i.targetDates = [];
+  i.targetDates.push({date:d, done:false});
+  renderDetail();
+}
+
+function addReply() {
+  const txt = document.getElementById('replyInput').value.trim();
+  if (!txt) { alert('請輸入回覆內容'); return; }
+  const i = issues.find(x => x.id === currentId);
+  if (!i.replies) i.replies = [];
+  i.replies.push({date: new Date().toISOString().slice(0,10), text: txt});
+  renderDetail();
+}
+
+// ===== 新增/編輯 =====
+function openAdd() {
+  if (!isAdmin) { showPin(() => openAdd()); return; }
+  showAddForm();
+}
+
+function openEdit() { showEditForm(); }
+
+function showAddForm() {
+  const today = new Date().toISOString().slice(0,10);
+  showModal(`
+    <div class="modal">
+      <div class="modal-title">➕ 新增客戶問題</div>
+      <label class="form-label">工令號碼 *</label>
+      <input class="form-input" id="f_wo" placeholder="例：26200" />
+      <label class="form-label">客戶名稱 *</label>
+      <input class="form-input" id="f_client" placeholder="例：台灣杜邦" />
+      <label class="form-label">問題標題 *</label>
+      <input class="form-input" id="f_title" placeholder="簡短描述問題" />
+      <label class="form-label">問題說明</label>
+      <textarea class="reply-input" id="f_desc" placeholder="詳細說明問題內容…"></textarea>
+      <label class="form-label">部門</label>
+      <select class="status-select" id="f_dept">
+        <option>製造部</option><option>品管部</option><option>維修部</option><option>技術部</option><option>業務部</option>
+      </select>
+      <label class="form-label">負責人員</label>
+      <input class="form-input" id="f_assignee" placeholder="輸入姓名" />
+      <label class="form-label">建立日期</label>
+      <input class="form-input" type="date" id="f_date" value="${today}" />
+      <label class="form-label">預定完成日（選填）</label>
+      <input class="form-input" type="date" id="f_due" />
+      <label class="form-label">狀態</label>
+      <select class="status-select" id="f_status">
+        <option value="open">待處理</option><option value="progress">處理中</option><option value="wait">等待中</option><option value="done">已完成</option>
+      </select>
+      <div class="checkbox-row">
+        <input type="checkbox" id="f_urg" />
+        <label for="f_urg">標記為急件 🔴</label>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeModal()">取消</button>
+        <button class="btn-save" onclick="saveNew()">儲存</button>
+      </div>
+    </div>`);
+}
+
+function showEditForm() {
+  const i = issues.find(x => x.id === currentId);
+  if (!i) return;
+  showModal(`
+    <div class="modal">
+      <div class="modal-title">✏ 編輯問題</div>
+      <label class="form-label">工令號碼</label>
+      <input class="form-input" id="f_wo" value="${i.wo||''}" />
+      <label class="form-label">客戶名稱</label>
+      <input class="form-input" id="f_client" value="${i.client||''}" />
+      <label class="form-label">問題標題</label>
+      <input class="form-input" id="f_title" value="${i.title||''}" />
+      <label class="form-label">問題說明</label>
+      <textarea class="reply-input" id="f_desc">${i.desc||''}</textarea>
+      <label class="form-label">部門</label>
+      <select class="status-select" id="f_dept">
+        ${['製造部','品管部','維修部','技術部','業務部'].map(d=>`<option ${i.dept===d?'selected':''}>${d}</option>`).join('')}
+      </select>
+      <label class="form-label">負責人員</label>
+      <input class="form-input" id="f_assignee" value="${i.assignee||''}" />
+      <label class="form-label">建立日期</label>
+      <input class="form-input" type="date" id="f_date" value="${i.date||''}" />
+      <label class="form-label">狀態</label>
+      <select class="status-select" id="f_status">
+        ${Object.entries(SM).map(([k,v])=>`<option value="${k}" ${i.status===k?'selected':''}>${v}</option>`).join('')}
+      </select>
+      <div class="checkbox-row">
+        <input type="checkbox" id="f_urg" ${i.urgent?'checked':''} />
+        <label for="f_urg">標記為急件 🔴</label>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeModal()">取消</button>
+        <button class="btn-save" onclick="saveEdit()">儲存</button>
+      </div>
+    </div>`);
+}
+
+function saveNew() {
+  const wo = document.getElementById('f_wo').value.trim();
+  const client = document.getElementById('f_client').value.trim();
+  const title = document.getElementById('f_title').value.trim();
+  if (!wo||!client||!title) { alert('請填寫工令號碼、客戶名稱和問題標題'); return; }
+  const due = document.getElementById('f_due').value;
+  issues.unshift({
+    id: nextId++, wo, client, title,
+    status: document.getElementById('f_status').value,
+    urgent: document.getElementById('f_urg').checked,
+    date: document.getElementById('f_date').value || new Date().toISOString().slice(0,10),
+    dept: document.getElementById('f_dept').value,
+    assignee: document.getElementById('f_assignee').value.trim(),
+    desc: document.getElementById('f_desc').value.trim(),
+    targetDates: due ? [{date:due,done:false}] : [],
+    replies: []
+  });
+  closeModal(); renderList();
+}
+
+function saveEdit() {
+  const i = issues.find(x => x.id === currentId);
+  i.wo = document.getElementById('f_wo').value.trim();
+  i.client = document.getElementById('f_client').value.trim();
+  i.title = document.getElementById('f_title').value.trim();
+  i.desc = document.getElementById('f_desc').value.trim();
+  i.dept = document.getElementById('f_dept').value;
+  i.assignee = document.getElementById('f_assignee').value.trim();
+  i.date = document.getElementById('f_date').value || i.date;
+  i.status = document.getElementById('f_status').value;
+  i.urgent = document.getElementById('f_urg').checked;
+  closeModal(); renderDetail();
+}
+
+// ===== 密碼 =====
+let pinCallback = null;
+function showPin(cb) {
+  pinCallback = cb;
+  showModal(`
+    <div class="pin-box">
+      <div class="modal-title">🔐 生管驗證</div>
+      <p style="font-size:12px;color:#888;margin-top:4px">請輸入生管密碼才能新增或修改</p>
+      <input class="pin-input" type="password" id="pinInput" maxlength="6" placeholder="••••" oninput="checkPin()" />
+      <div class="pin-err" id="pinErr"></div>
+      <div class="modal-btns" style="margin-top:12px">
+        <button class="btn-cancel" onclick="closeModal()">取消</button>
+      </div>
+    </div>`);
+}
+
+function checkPin() {
+  const v = document.getElementById('pinInput').value;
+  if (v === PIN) {
+    isAdmin = true; closeModal();
+    if (pinCallback) { pinCallback(); pinCallback = null; }
+  } else if (v.length >= 4) {
+    document.getElementById('pinErr').textContent = '密碼錯誤，請重試';
+  }
+}
+
+// ===== 遮罩 =====
+function showModal(html) {
+  document.getElementById('overlayContent').innerHTML = html;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('show');
+}
+
+document.getElementById('overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ===== 啟動 =====
+loadFromSheet();
+</script>
+</body>
+</html>
+JSEOF
+echo "完成"
