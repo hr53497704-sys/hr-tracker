@@ -184,6 +184,8 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <input class="form-input" type="date" id="f_date" />
       <label class="form-label">預定完成日（選填）</label>
       <input class="form-input" type="date" id="f_due" />
+      <label class="form-label">實際完成日（選填）</label>
+      <input class="form-input" type="date" id="f_actual" />
       <label class="form-label">狀態</label>
       <select class="form-select" id="f_status">
         <option value="open">待處理</option><option value="progress">處理中</option><option value="wait">等待中</option><option value="done">已完成</option>
@@ -375,6 +377,21 @@ function filterByDept(dept) {
   renderList();
 }
 
+function saveActualDate(id) {
+  const i = issues.find(x => String(x.id) === String(id));
+  if (!i) return;
+  const d = document.getElementById('actualDate').value;
+  if (!d) { alert('請選擇實際完成日'); return; }
+  i.actualDate = d;
+  renderDetail();
+}
+
+function setQuickDate(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  document.getElementById('newDue').value = d.toISOString().slice(0,10);
+}
+
 function deleteIssue(id) {
   const i = issues.find(x => String(x.id) === String(id));
   if (!i) return;
@@ -485,8 +502,16 @@ function renderDetail() {
       <select class="form-select" onchange="changeStatus(this.value)">
         ${Object.entries(SM).map(([k,v])=>`<option value="${k}" ${i.status===k?'selected':''}>${v}</option>`).join('')}
       </select>
+      <label class="form-label">實際完成日</label>
+      <div class="add-row">
+        <input type="date" id="actualDate" value="${i.actualDate||''}" style="flex:1;font-size:15px;padding:10px;border:1px solid #ddd;border-radius:8px;outline:none;color:#333" />
+        <button class="blue-btn" onclick="saveActualDate('${i.id}')">儲存</button>
+      </div>
       <label class="form-label">新增預定完成日</label>
-      <div class="add-row"><input type="date" id="newDue" /><button class="blue-btn" onclick="addDue()">新增</button></div>
+      <div class="add-row">
+        <input type="date" id="newDue" style="flex:1;font-size:15px;padding:10px;border:1px solid #ddd;border-radius:8px;outline:none;color:#333" />
+        <button class="blue-btn" onclick="addDue()">新增</button>
+      </div>
       <label class="form-label">新增回覆紀錄</label>
       <textarea class="form-textarea" id="replyInput" placeholder="輸入處理進度…" style="margin-top:6px"></textarea>
       <button class="blue-btn" style="width:100%;margin-top:8px;padding:12px" onclick="addReply()">送出回覆</button>
@@ -499,6 +524,7 @@ function renderDetail() {
     <div class="info-row"><span class="info-lbl">狀態</span><span class="info-val"><span class="badge ${SC[i.status]}">${SM[i.status]}</span></span></div>
     <div class="info-row"><span class="info-lbl">建立日期</span><span class="info-val">${formatDate(i.date)}</span></div>
     <div class="info-row"><span class="info-lbl">部門 / 人員</span><span class="info-val">${(i.dept||'—')+' / '+(i.assignee||'—')}</span></div>
+    <div class="info-row"><span class="info-lbl">實際完成日</span><span class="info-val" style="color:${i.actualDate?'#3B6D11':'#bbb'}">${i.actualDate||'尚未完成'}</span></div>
     <div class="desc-box">${i.desc||'（無說明）'}</div>
     ${dueHTML}${repliesHTML}${adminHTML}`;
 }
