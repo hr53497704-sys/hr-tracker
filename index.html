@@ -137,10 +137,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
     <div style="padding:7px 12px;background:#f8f9fa;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;gap:8px">
       <span style="font-size:12px;color:#666;white-space:nowrap">🏢 部門：</span>
       <select id="deptFilter" onchange="filterByDept(this.value)" style="flex:1;font-size:13px;padding:7px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#333;outline:none">
-        <option value="">全部部門</option>
-        <option>製造部</option><option>機工</option><option>膠工</option>
-        <option>電工</option><option>電控</option><option>業務</option>
-        <option>採購</option><option>生管</option>
+        <option value="">全部部門</option><option>製造部</option><option>機工</option><option>膠工</option><option>電工</option><option>電控</option><option>設計</option><option>業務</option><option>採購</option><option>生管</option>
       </select>
     </div>
     <div class="stats-bar" id="statsBar"></div>
@@ -178,7 +175,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <textarea class="form-textarea" id="f_desc" placeholder="詳細說明…"></textarea>
       <label class="form-label">部門</label>
       <select class="form-select" id="f_dept">
-        <option>製造部</option><option>機工</option><option>膠工</option><option>電工</option><option>電控</option><option>業務</option><option>採購</option><option>生管</option>
+        <option>製造部</option><option>機工</option><option>膠工</option><option>電工</option><option>電控</option><option>設計</option><option>業務</option><option>採購</option><option>生管</option>
       </select>
       <label class="form-label">負責人員</label>
       <input class="form-input" id="f_assignee" placeholder="輸入姓名" />
@@ -222,7 +219,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <textarea class="form-textarea" id="e_desc"></textarea>
       <label class="form-label">部門</label>
       <select class="form-select" id="e_dept">
-        <option>製造部</option><option>機工</option><option>膠工</option><option>電工</option><option>電控</option><option>業務</option><option>採購</option><option>生管</option>
+        <option>製造部</option><option>機工</option><option>膠工</option><option>電工</option><option>電控</option><option>設計</option><option>業務</option><option>採購</option><option>生管</option>
       </select>
       <label class="form-label">負責人員</label>
       <input class="form-input" id="e_assignee" />
@@ -383,7 +380,12 @@ function renderList() {
   const list = document.getElementById('issueList');
   if (!data.length) { list.innerHTML='<div class="empty-msg">沒有符合的記錄</div>'; return; }
   list.innerHTML = data.map(i => {
-    const dueTags = (i.targetDates||[]).map(d => `<span class="due-tag ${d.done?'due-old':'due-now'}">📅 ${d.date}</span>`).join('');
+    const today = new Date().toISOString().slice(0,10);
+    const dueTags = (i.targetDates||[]).map((d,idx) => {
+      const isLast = idx === i.targetDates.length - 1;
+      const isOverdue = !d.done && isLast && d.date < today && i.status !== 'done';
+      return `<span class="due-tag ${d.done?'due-old':'due-now'}">${isOverdue?'<strong style="color:#cc0000;font-size:12px">⚠ 逾時</strong> ':''}📅 ${d.date}</span>`;
+    }).join('');
     return `<div class="issue-card" onclick="openDetail(${i.id})">
       <div class="card-top">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -394,7 +396,7 @@ function renderList() {
       </div>
       <div class="card-title">${i.title}</div>
       <div class="card-meta">
-        <span>工令 ${i.wo}</span><span>建立 ${i.date}</span>
+        <span>工令 ${i.wo}</span><span>建立 ${String(i.date).slice(0,10)}</span>
         <span>${i.dept||''}${i.assignee?' · '+i.assignee:''}</span>
       </div>
       ${dueTags?'<div class="due-tags">'+dueTags+'</div>':''}
@@ -429,10 +431,6 @@ function renderDetail() {
         <div class="admin-btn" onclick="goEdit()">✏ 編輯問題</div>
         <div class="admin-btn danger-btn" onclick="markDelayed()">📅 標記延期</div>
       </div>
-      <div class="admin-grid" style="margin-bottom:10px">
-        <div class="admin-btn" onclick="goEdit()">✏ 編輯問題</div>
-        <div class="admin-btn danger-btn" onclick="markDelayed()">📅 標記延期</div>
-      </div>
       <button onclick="deleteIssue('${i.id}')" style="width:100%;padding:10px;background:#fff0f0;color:#cc0000;border:1px solid #cc0000;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px">🗑 刪除這筆問題</button>
       <label class="form-label" style="margin-top:0">更改狀態</label>
       <select class="form-select" onchange="changeStatus(this.value)">
@@ -450,7 +448,7 @@ function renderDetail() {
     <div class="info-row"><span class="info-lbl">客戶</span><span class="info-val">${i.client}</span></div>
     <div class="info-row"><span class="info-lbl">工令號碼</span><span class="info-val">${i.wo}</span></div>
     <div class="info-row"><span class="info-lbl">狀態</span><span class="info-val"><span class="badge ${SC[i.status]}">${SM[i.status]}</span></span></div>
-    <div class="info-row"><span class="info-lbl">建立日期</span><span class="info-val">${i.date}</span></div>
+    <div class="info-row"><span class="info-lbl">建立日期</span><span class="info-val">${String(i.date).slice(0,10)}</span></div>
     <div class="info-row"><span class="info-lbl">部門 / 人員</span><span class="info-val">${(i.dept||'—')+' / '+(i.assignee||'—')}</span></div>
     <div class="desc-box">${i.desc||'（無說明）'}</div>
     ${dueHTML}${repliesHTML}${adminHTML}`;
@@ -494,7 +492,7 @@ function loadEditForm() {
   document.getElementById('e_assignee').value=i.assignee||'';
   document.getElementById('e_date').value=i.date||'';
   document.getElementById('e_urg').checked=!!i.urgent;
-  ['製造部','機工','膠工','電工','電控','業務','採購','生管'].forEach((d,idx)=>{ if(d===i.dept) document.getElementById('e_dept').selectedIndex=idx; });
+  ['製造部', '機工', '膠工', '電工', '電控', '設計', '業務', '採購', '生管'].forEach((d,idx)=>{ if(d===i.dept) document.getElementById('e_dept').selectedIndex=idx; });
   Object.keys(SM).forEach((k,idx)=>{ if(k===i.status) document.getElementById('e_status').selectedIndex=idx; });
 }
 function saveEdit() {
