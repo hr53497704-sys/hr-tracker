@@ -44,6 +44,8 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
 .due-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
 .due-tag{font-size:10px;padding:2px 7px;border-radius:4px}
 .due-now{background:#EAF3DE;color:#3B6D11;border:1px solid #C0DD97}
+.due-soon{background:#FFFBE6;color:#856404;border:1px solid #FFD700}
+.card-warning{border-left:4px solid #FFD700 !important}
 .due-old{background:#f5f5f5;color:#999;border:1px solid #e0e0e0;text-decoration:line-through}
 .fab{position:fixed;bottom:24px;right:calc(50% - 220px);background:#2D5A8C;color:#fff;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:26px;box-shadow:0 3px 12px rgba(45,90,140,0.4);border:none;z-index:50;-webkit-tap-highlight-color:transparent}
 @media(max-width:480px){.fab{right:16px}}
@@ -116,6 +118,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <div class="topbar-title">客戶問題追蹤系統</div>
     </div>
     <button class="save-btn" onclick="saveToSheet()" id="saveBtn">☁ 儲存</button>
+    <button class="save-btn" onclick="exportCSV()" style="background:rgba(255,255,255,0.15);margin-left:4px">📥 匯出</button>
   </div>
   <div class="sync-bar">
     <span class="dot dot-sync" id="syncDot"></span>
@@ -344,6 +347,61 @@ async function saveToSheet() {
 }
 
 // 列表
+function formatDate(d) {
+  if (!d) return '';
+  const s = String(d);
+  // 已經是 YYYY-MM-DD 格式
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s.slice(0,10))) return s.slice(0,10);
+  // 其他格式轉換
+  try { return new Date(s).toISOString().slice(0,10); } catch(e) { return s.slice(0,10); }
+}
+
+function exportCSV() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const data = issues.filter(i => {
+    if (filterTab === 'done') { if (i.status !== 'done') return false; }
+    else if (filterTab === 'all') { if (i.status === 'done') return false; }
+    else { if (i.status !== filterTab) return false; }
+    if (filterUrg && !i.urgent) return false;
+    if (filterDept && String(i.dept||'').trim() !== filterDept.trim()) return false;
+    if (filterClient && String(i.client||'').trim() !== filterClient.trim()) return false;
+    if (q && !`${i.wo}${i.client}${i.title}${i.desc}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if (!data.length) { alert('目前沒有資料可以匯出！'); return; }
+  const SM2 = {open:'待處理',progress:'處理中',done:'已完成',wait:'等待中'};
+  const rows = [['工令','客戶','問題標題','狀態','急件','建立日期','部門','負責人員','問題說明','預定完成日','實際完成日','處理紀錄']];
+  data.forEach(i => {
+    const dates = (i.targetDates||[]).map(d => formatDate(d.date)+(d.done?' (延期)':'')).join(', ');
+    const replies = (i.replies||[]).map(r => r.date+':'+r.text).join(' | ');
+    rows.push([i.wo||'', i.client||'', i.title||'', SM2[i.status]||'', i.urgent?'是':'否',
+      formatDate(i.date), i.dept||'', i.assignee||'', i.desc||'',
+      dates, i.actualDate||'', replies]);
+  });
+  const BOM = '﻿';
+  const csv = BOM + rows.map(r => r.map(c => {
+    const s = String(c||'').replace(/"/g,'""');
+    return (s.includes(',')||s.includes('
+')||s.includes('"')) ? '"'+s+'"' : s;
+  }).join(',')).join('
+');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '鴻睿問題清單_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function deleteReply(id, idx) {
+  const i = issues.find(x => String(x.id) === String(id));
+  if (!i) return;
+  if (!confirm('確定要刪除這筆回覆紀錄嗎？')) return;
+  i.replies.splice(idx, 1);
+  renderDetail();
+}
+
 function filterByDept(dept) { filterDept = dept; renderList(); }
 function filterByClient(client) { filterClient = client; renderList(); }
 function updateClientFilter() {
@@ -373,10 +431,12 @@ function toggleUrg() { filterUrg=!filterUrg; document.getElementById('urgBtn').c
 
 function renderList() {
   updateClientFilter();
+  const baseIssues = filterDept ? issues.filter(i=>String(i.dept||'').trim()===filterDept.trim()) : issues;
+  const baseIssues2 = filterClient ? baseIssues.filter(i=>String(i.client||'').trim()===filterClient.trim()) : baseIssues;
   const c={open:0,progress:0,done:0,wait:0};
-  issues.forEach(i => c[i.status]=(c[i.status]||0)+1);
+  baseIssues2.forEach(i => c[i.status]=(c[i.status]||0)+1);
   document.getElementById('statsBar').innerHTML = `
-    <div class="stat-chip"><div class="stat-num">${issues.length}</div><div class="stat-lbl">全部</div></div>
+    <div class="stat-chip"><div class="stat-num">${baseIssues2.filter(i=>i.status!=='done').length}</div><div class="stat-lbl">全部</div></div>
     <div class="stat-chip"><div class="stat-num" style="color:#993C1D">${c.open}</div><div class="stat-lbl">待處理</div></div>
     <div class="stat-chip"><div class="stat-num" style="color:#854F0B">${c.progress}</div><div class="stat-lbl">處理中</div></div>
     <div class="stat-chip"><div class="stat-num" style="color:#3B6D11">${c.done}</div><div class="stat-lbl">已完成</div></div>`;
@@ -394,8 +454,21 @@ function renderList() {
   const list = document.getElementById('issueList');
   if (!data.length) { list.innerHTML='<div class="empty-msg">沒有符合的記錄</div>'; return; }
   list.innerHTML = data.map(i => {
-    const dueTags = (i.targetDates||[]).map(d => `<span class="due-tag ${d.done?'due-old':'due-now'}">📅 ${d.date}</span>`).join('');
-    return `<div class="issue-card" onclick="openDetail(${i.id})">
+    const today = new Date().toISOString().slice(0,10);
+    const tds = Array.isArray(i.targetDates) ? i.targetDates.filter(d=>d&&d.date) : [];
+    const last = tds[tds.length-1];
+    const isOver = last&&!last.done&&formatDate(last.date)<today&&i.status!=='done';
+    const isSoon = !isOver&&last&&!last.done&&i.status!=='done'&&
+      ((new Date(formatDate(last.date))-new Date())/86400000)<=3&&
+      ((new Date(formatDate(last.date))-new Date())/86400000)>=0;
+    const dueTags = tds.map((d,ix)=>{
+      const isLast=ix===tds.length-1;
+      const cls=d.done?'due-old':(isSoon&&isLast)?'due-soon':'due-now';
+      const ext=isOver&&isLast?'<strong style="color:#cc0000;font-weight:900;margin-left:4px">▲ 逾時</strong>':
+                isSoon&&isLast?'<strong style="color:#856404;font-weight:700;margin-left:4px">⏰ 即將到期</strong>':'';
+      return '<span class="due-tag '+cls+'">📅 '+formatDate(d.date)+ext+'</span>';
+    }).join('');
+    return `<div class="issue-card ${isSoon?'card-warning':''}" onclick="openDetail(${i.id})">
       <div class="card-top">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span class="client-tag">${i.client}</span>
@@ -405,7 +478,7 @@ function renderList() {
       </div>
       <div class="card-title">${i.title}</div>
       <div class="card-meta">
-        <span>工令 ${i.wo}</span><span>建立 ${i.date}</span>
+        <span>工令 ${i.wo}</span><span>建立 ${formatDate(i.date)}</span>
         <span>${i.dept||''}${i.assignee?' · '+i.assignee:''}</span>
       </div>
       ${dueTags?'<div class="due-tags">'+dueTags+'</div>':''}
@@ -426,11 +499,12 @@ function renderDetail() {
         ${(i.targetDates||[]).map((d,idx)=>{const isLast=idx===i.targetDates.length-1; return `<div class="due-item"><div class="due-dot" style="background:${d.done?'#993C1D':'#3B6D11'}"></div><span class="${d.done?'crossed':isLast?'latest-due':''}">${d.date}${d.done?' (延期未完成)':isLast?' 【目前預定】':''}</span></div>`;}).join('')}
       </div>
     </div>` : '';
+  const _replies = Array.isArray(i.replies) ? i.replies.filter(r=>r&&r.text) : [];
   const repliesHTML = `
     <div class="section">
       <div class="section-title">處理紀錄（${(i.replies||[]).length} 則）</div>
       <div class="reply-list">
-        ${(i.replies||[]).length?(i.replies||[]).map(r=>`<div class="reply-card"><div class="reply-date">${r.date}</div><div class="reply-text">${r.text}</div></div>`).join(''):'<div class="empty-msg" style="padding:12px">尚無處理紀錄</div>'}
+        ${_replies.length?_replies.map((r,rx)=>`<div class="reply-card" style="position:relative"><div class="reply-date">${r.date||''}</div><div class="reply-text">${r.text||''}</div>${isAdmin?`<button onclick="deleteReply('${i.id}',${rx})" style="position:absolute;top:6px;right:8px;background:none;border:none;color:#ccc;font-size:14px;cursor:pointer">🗑</button>`:''}</div>`).join(''):'<div class="empty-msg" style="padding:12px">尚無處理紀錄</div>'}
       </div>
     </div>`;
   const adminHTML = isAdmin ? `
@@ -456,7 +530,7 @@ function renderDetail() {
     <div class="info-row"><span class="info-lbl">客戶</span><span class="info-val">${i.client}</span></div>
     <div class="info-row"><span class="info-lbl">工令號碼</span><span class="info-val">${i.wo}</span></div>
     <div class="info-row"><span class="info-lbl">狀態</span><span class="info-val"><span class="badge ${SC[i.status]}">${SM[i.status]}</span></span></div>
-    <div class="info-row"><span class="info-lbl">建立日期</span><span class="info-val">${i.date}</span></div>
+    <div class="info-row"><span class="info-lbl">建立日期</span><span class="info-val">${formatDate(i.date)}</span></div>
     <div class="info-row"><span class="info-lbl">部門 / 人員</span><span class="info-val">${(i.dept||'—')+' / '+(i.assignee||'—')}</span></div>
     <div class="desc-box">${i.desc||'（無說明）'}</div>
     ${dueHTML}${repliesHTML}${adminHTML}`;
@@ -498,7 +572,7 @@ function loadEditForm() {
   document.getElementById('e_title').value=i.title||'';
   document.getElementById('e_desc').value=i.desc||'';
   document.getElementById('e_assignee').value=i.assignee||'';
-  document.getElementById('e_date').value=i.date||'';
+  document.getElementById('e_date').value=formatDate(i.date)||'';
   document.getElementById('e_urg').checked=!!i.urgent;
   ['製造部', '機工', '膠工', '電工', '電控', '設計', '業務', '採購', '生管'].forEach((d,idx)=>{ if(d===i.dept) document.getElementById('e_dept').selectedIndex=idx; });
   Object.keys(SM).forEach((k,idx)=>{ if(k===i.status) document.getElementById('e_status').selectedIndex=idx; });
