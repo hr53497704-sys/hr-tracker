@@ -310,8 +310,12 @@ function confirmPin() {
 async function loadFromSheet() {
   setSyncStatus('sync', '連線中...');
   try {
-    const r = await fetch(SCRIPT_URL + '?action=load');
-    const data = await r.json();
+    const r = await fetch(SCRIPT_URL + '?action=load', {
+      method: 'GET',
+      redirect: 'follow'
+    });
+    const text = await r.text();
+    const data = JSON.parse(text);
     if (data.issues && Array.isArray(data.issues) && data.issues.length > 0) {
       issues = data.issues.map(i => ({
         ...i,
