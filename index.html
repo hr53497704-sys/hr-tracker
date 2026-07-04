@@ -405,7 +405,7 @@ function renderList() {
     const dueTags = tds.map((d,idx) => {
       const isLast = idx === tds.length-1;
       const isOverdue = !d.done && isLast && formatDate(d.date) < today && i.status !== 'done';
-      return `<span class="due-tag ${d.done?'due-old':'due-now'}">📅 ${formatDate(d.date)}${isOverdue?'<strong style="color:#cc0000;font-weight:700;margin-left:4px">⚠逾時</strong>':''}</span>`;
+      return `<span class="due-tag ${d.done?'due-old':'due-now'}">📅 ${formatDate(d.date)}</span>`;
     }).join('');
     return `<div class="issue-card" onclick="openDetail(${i.id})">
       <div class="card-top">
@@ -416,6 +416,7 @@ function renderList() {
         <span class="badge ${SC[i.status]}">${SM[i.status]}</span>
       </div>
       <div class="card-title">${i.title}</div>
+      ${(()=>{ const today=new Date().toISOString().slice(0,10); const tds=Array.isArray(i.targetDates)?i.targetDates.filter(d=>d&&d.date):[]; const last=tds[tds.length-1]; const over=last&&!last.done&&formatDate(last.date)<today&&i.status!=='done'; return over?'<div style="font-size:14px;font-weight:700;color:#cc0000;margin-bottom:4px">⚠ 逾時未完成</div>':''; })()}
       <div class="card-meta">
         <span>工令 ${i.wo}</span><span>建立 ${formatDate(i.date)}</span>
         <span>${i.dept||''}${i.assignee?' · '+i.assignee:''}</span>
