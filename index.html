@@ -299,19 +299,31 @@ function confirmPin() {
 async function loadFromSheet() {
   setSyncStatus('sync', '連線中...');
   try {
-    const r = await fetch(SCRIPT_URL + '?action=load', {mode:'cors'});
-    const data = await r.json();
-    if (data.issues && data.issues.length > 0) {
-      issues = data.issues.map(i => ({...i, targetDates: Array.isArray(i.targetDates)?i.targetDates:[], replies: Array.isArray(i.replies)?i.replies:[]}));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const r = await fetch(SCRIPT_URL + '?action=load', {
+      method: 'GET',
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    const text = await r.text();
+    const data = JSON.parse(text);
+    if (data.issues && Array.isArray(data.issues) && data.issues.length > 0) {
+      issues = data.issues.map(i => ({
+        ...i,
+        date: String(i.date||'').slice(0,10),
+        targetDates: Array.isArray(i.targetDates) ? i.targetDates.filter(d=>d&&d.date) : [],
+        replies: Array.isArray(i.replies) ? i.replies.filter(r=>r&&r.text) : []
+      }));
       nextId = Math.max(...issues.map(i => parseInt(i.id)||0)) + 1;
       setSyncStatus('ok', '已同步 · ' + new Date().toLocaleTimeString('zh-TW'));
     } else {
-      issues = defaultData();
-      setSyncStatus('ok', '使用示範資料');
+      issues = [];
+      setSyncStatus('ok', '尚無資料，請新增問題');
     }
   } catch(e) {
-    issues = defaultData();
-    setSyncStatus('err', '離線模式');
+    issues = [];
+    setSyncStatus('err', '無法連線，請確認網路後重試');
   }
   renderList();
 }
@@ -342,6 +354,13 @@ async function saveToSheet() {
 }
 
 // 列表
+function formatDate(d) {
+  if (!d) return '';
+  var s = String(d).slice(0,10);
+  if (s.match(/^\d{4}-\d{2}-\d{2}$/)) return s;
+  try { return new Date(d).toISOString().slice(0,10); } catch(e) { return s; }
+}
+
 function filterByDept(dept) {
   filterDept = dept;
   renderList();
@@ -381,12 +400,11 @@ function renderList() {
   if (!data.length) { list.innerHTML='<div class="empty-msg">沒有符合的記錄</div>'; return; }
   list.innerHTML = data.map(i => {
     const today = new Date().toISOString().slice(0,10);
-    const tds = Array.isArray(i.targetDates) ? i.targetDates.filter(d => d && d.date) : [];
+    const tds = Array.isArray(i.targetDates) ? i.targetDates.filter(d=>d&&d.date) : [];
     const dueTags = tds.map((d,idx) => {
-      const isLast = idx === tds.length - 1;
+      const isLast = idx === tds.length-1;
       const isOverdue = !d.done && isLast && formatDate(d.date) < today && i.status !== 'done';
-      const overdueBadge = isOverdue ? '<strong style="color:#cc0000;font-size:12px;font-weight:700"> ⚠ 逾時</strong>' : '';
-      return `<span class="due-tag ${d.done?'due-old':'due-now'}">📅 ${formatDate(d.date)}${overdueBadge}</span>`;
+      return `<span class="due-tag ${d.done?'due-old':'due-now'}">📅 ${formatDate(d.date)}${isOverdue?'<strong style="color:#cc0000;font-weight:700;margin-left:4px">⚠逾時</strong>':''}</span>`;
     }).join('');
     return `<div class="issue-card" onclick="openDetail(${i.id})">
       <div class="card-top">
@@ -412,20 +430,20 @@ function openDetail(id) { currentId=id; showPage('detailPage'); renderDetail(); 
 function renderDetail() {
   const i = issues.find(x=>x.id===currentId);
   if (!i) return;
-  const _tds = Array.isArray(i.targetDates) ? i.targetDates.filter(d => d && d.date) : [];
-  const today2 = new Date().toISOString().slice(0,10);
+  const _tds = Array.isArray(i.targetDates) ? i.targetDates.filter(d=>d&&d.date) : [];
+  const _today = new Date().toISOString().slice(0,10);
   const dueHTML = _tds.length ? `
     <div class="section">
       <div class="section-title">預定完成日記錄</div>
       <div class="due-history">
         ${_tds.map((d,idx)=>{
           const isLast=idx===_tds.length-1;
-          const isOverdue = !d.done && isLast && formatDate(d.date) < today2 && i.status !== 'done';
-          return `<div class="due-item"><div class="due-dot" style="background:${d.done?'#993C1D':'#3B6D11'}"></div><span class="${d.done?'crossed':isLast?'latest-due':''}">${formatDate(d.date)}${d.done?' (延期未完成)':isLast?' 【目前預定】':''}${isOverdue?' <strong style=\'color:#cc0000;font-weight:700\'>⚠ 逾時</strong>':''}</span></div>`;
+          const isOverdue=!d.done&&isLast&&formatDate(d.date)<_today&&i.status!=='done';
+          return `<div class="due-item"><div class="due-dot" style="background:${d.done?'#993C1D':'#3B6D11'}"></div><span class="${d.done?'crossed':isLast?'latest-due':''}">${formatDate(d.date)}${d.done?' (延期)':isLast?' 【目前預定】':''}${isOverdue?' <strong style=\'color:#cc0000\'>⚠逾時</strong>':''}</span></div>`;
         }).join('')}
       </div>
     </div>` : '';
-  const _replies = Array.isArray(i.replies) ? i.replies.filter(r => r && r.text) : [];
+  const _replies = Array.isArray(i.replies) ? i.replies.filter(r=>r&&r.text) : [];
   const repliesHTML = `
     <div class="section">
       <div class="section-title">處理紀錄（${_replies.length} 則）</div>
