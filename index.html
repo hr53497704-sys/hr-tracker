@@ -382,7 +382,9 @@ function renderList() {
     <div class="stat-chip"><div class="stat-num" style="color:#3B6D11">${c.done}</div><div class="stat-lbl">已完成</div></div>`;
   const q = document.getElementById('searchInput').value.toLowerCase();
   const data = issues.filter(i => {
-    if (filterTab!=='all' && i.status!==filterTab) return false;
+    if (filterTab === 'done') { if (i.status !== 'done') return false; }
+    else if (filterTab === 'all') { if (i.status === 'done') return false; }
+    else { if (i.status !== filterTab) return false; }
     if (filterUrg && !i.urgent) return false;
     if (filterDept && String(i.dept||'').trim() !== filterDept.trim()) return false;
     if (filterClient && String(i.client||'').trim() !== filterClient.trim()) return false;
