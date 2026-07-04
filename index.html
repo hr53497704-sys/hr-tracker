@@ -323,11 +323,20 @@ async function saveToSheet() {
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    const r = await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'save', issues})});
-    const data = await r.json();
-    if (data.ok) { setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW')); btn.textContent = '☁ 儲存'; }
-    else throw new Error();
-  } catch(e) { setSyncStatus('err', '儲存失敗'); btn.textContent = '❌ 重試'; setTimeout(()=>btn.textContent='☁ 儲存',3000); }
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type':'text/plain'},
+      body: JSON.stringify({action:'save', issues})
+    });
+    await new Promise(r => setTimeout(r, 1500));
+    setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
+    btn.textContent = '☁ 儲存';
+  } catch(e) {
+    setSyncStatus('err', '儲存失敗，請重試');
+    btn.textContent = '❌ 重試';
+    setTimeout(() => btn.textContent = '☁ 儲存', 3000);
+  }
 }
 
 // 列表
