@@ -264,7 +264,7 @@ const PIN = '1277';
 const SM = {open:'待處理',progress:'處理中',done:'已完成',wait:'等待中'};
 const SC = {open:'s-open',progress:'s-progress',done:'s-done',wait:'s-wait'};
 
-let issues = [], nextId = 100, filterTab = 'all', filterUrg = false, filterDept = '', isAdmin = false, currentId = null;
+let issues = [], nextId = 100, filterTab = 'all', filterUrg = false, filterDept = '', filterClient = '', isAdmin = false, currentId = null;
 let pinNextAction = '';
 
 document.getElementById('logoImg').src = LOGO_B64;
@@ -383,14 +383,14 @@ function filterByDept(dept) {
   renderList();
 }
 
-function filterByClient(client) { filterClient = client; renderList(); }
+function filterByClient(c) { filterClient = c; renderList(); }
 function updateClientFilter() {
   const sel = document.getElementById('clientFilter');
   if (!sel) return;
   const cur = sel.value;
-  const clients = [...new Set(issues.map(i => i.client).filter(Boolean))].sort();
-  sel.innerHTML = '<option value="">全部客戶</option>' + clients.map(c =>
-    '<option value="'+c+'"'+(c===cur?' selected':'')+'>'+c+'</option>'
+  const cs = [...new Set(issues.map(i => i.client).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">全部客戶</option>' + cs.map(c =>
+    '<option value="' + c + '"' + (c===cur?' selected':'') + '>' + c + '</option>'
   ).join('');
 }
 function saveActualDate(id) {
