@@ -135,6 +135,13 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <div class="urg-btn" id="urgBtn" onclick="toggleUrg()">🔴 急件</div>
     </div>
     <div style="padding:7px 12px;background:#f8f9fa;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;color:#666;white-space:nowrap">🏭 客戶：</span>
+      <select id="clientFilter" onchange="filterByClient(this.value)" style="flex:1;font-size:13px;padding:7px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#333;outline:none">
+        <option value="">全部客戶</option>
+      </select>
+    </div>
+
+    <div style="padding:7px 12px;background:#f8f9fa;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;gap:8px">
       <span style="font-size:12px;color:#666;white-space:nowrap">🏢 部門：</span>
       <select id="deptFilter" onchange="filterByDept(this.value)" style="flex:1;font-size:13px;padding:7px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#333;outline:none">
         <option value="">全部部門</option><option>製造部</option><option>機工</option><option>膠工</option><option>電工</option><option>電控</option><option>設計</option><option>業務</option><option>採購</option><option>生管</option>
@@ -248,7 +255,7 @@ const PIN = '1277';
 const SM = {open:'待處理',progress:'處理中',done:'已完成',wait:'等待中'};
 const SC = {open:'s-open',progress:'s-progress',done:'s-done',wait:'s-wait'};
 
-let issues = [], nextId = 100, filterTab = 'all', filterUrg = false, filterDept = '', isAdmin = false, currentId = null;
+let issues = [], nextId = 100, filterTab = 'all', filterUrg = false, filterDept = '', filterClient = '', isAdmin = false, currentId = null;
 let pinNextAction = '';
 let pinNextAction = '';
 
@@ -339,6 +346,24 @@ async function saveToSheet() {
 
 // 列表
 function filterByDept(dept) { filterDept = dept; renderList(); }
+function filterByClient(client) { filterClient = client; renderList(); }
+function updateClientFilter() {
+  const sel = document.getElementById('clientFilter');
+  if (!sel) return;
+  const cur = sel.value;
+  const clients = [...new Set(issues.map(i => i.client).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">全部客戶</option>' + clients.map(c => '<option value="'+c+'"'+(c===cur?' selected':'')+'>'+c+'</option>').join('');
+}
+function filterByClient(client) { filterClient = client; renderList(); }
+function updateClientFilter() {
+  const sel = document.getElementById('clientFilter');
+  if (!sel) return;
+  const cur = sel.value;
+  const clients = [...new Set(issues.map(i => i.client).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">全部客戶</option>' + clients.map(c =>
+    '<option value="' + c + '"' + (c===cur?' selected':'') + '>' + c + '</option>'
+  ).join('');
+}
 
 function switchTab(t) {
   filterTab = t;
@@ -348,6 +373,7 @@ function switchTab(t) {
 function toggleUrg() { filterUrg=!filterUrg; document.getElementById('urgBtn').classList.toggle('on',filterUrg); renderList(); }
 
 function renderList() {
+  updateClientFilter();
   const c={open:0,progress:0,done:0,wait:0};
   issues.forEach(i => c[i.status]=(c[i.status]||0)+1);
   document.getElementById('statsBar').innerHTML = `
@@ -360,6 +386,7 @@ function renderList() {
     if (filterTab!=='all' && i.status!==filterTab) return false;
     if (filterUrg && !i.urgent) return false;
     if (filterDept && String(i.dept||'').trim() !== filterDept.trim()) return false;
+    if (filterClient && String(i.client||'').trim() !== filterClient.trim()) return false;
     if (q && !`${i.wo}${i.client}${i.title}${i.desc}`.toLowerCase().includes(q)) return false;
     return true;
   });
