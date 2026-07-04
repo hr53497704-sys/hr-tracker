@@ -45,6 +45,8 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
 .due-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
 .due-tag{font-size:10px;padding:2px 7px;border-radius:4px}
 .due-now{background:#EAF3DE;color:#3B6D11;border:1px solid #C0DD97}
+.due-soon{background:#FFFBE6;color:#856404;border:1px solid #FFD700}
+.card-warning{border-left:4px solid #FFD700 !important}
 .due-old{background:#f5f5f5;color:#999;border:1px solid #e0e0e0;text-decoration:line-through}
 .fab{position:fixed;bottom:24px;right:calc(50% - 220px);background:#2D5A8C;color:#fff;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:26px;box-shadow:0 3px 12px rgba(45,90,140,0.4);border:none;z-index:50;-webkit-tap-highlight-color:transparent}
 @media(max-width:480px){.fab{right:16px}}
@@ -107,6 +109,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
 .pin-btns{display:flex;gap:8px;margin-top:10px}
 .pin-btns button{flex:1;padding:10px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;-webkit-tap-highlight-color:transparent}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -117,6 +120,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <div class="topbar-title">客戶問題追蹤系統</div>
     </div>
     <button class="save-btn" onclick="saveToSheet()" id="saveBtn">☁ 儲存</button>
+    <button class="save-btn" onclick="exportExcel()" style="background:rgba(255,255,255,0.2);margin-left:4px">📥 匯出</button>
   </div>
   <div class="sync-bar">
     <span class="dot dot-sync" id="syncDot"></span>
@@ -134,6 +138,12 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
     <div class="search-bar">
       <input id="searchInput" placeholder="🔍 搜尋工令、客戶、問題…" oninput="renderList()" />
       <div class="urg-btn" id="urgBtn" onclick="toggleUrg()">🔴 急件</div>
+    </div>
+    <div style="padding:7px 12px;background:#f8f9fa;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;color:#666;white-space:nowrap">🏭 客戶：</span>
+      <select id="clientFilter" onchange="filterByClient(this.value)" style="flex:1;font-size:13px;padding:7px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#333;outline:none">
+        <option value="">全部客戶</option>
+      </select>
     </div>
     <div style="padding:7px 12px;background:#f8f9fa;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;gap:8px">
       <span style="font-size:12px;color:#666;white-space:nowrap">🏢 部門：</span>
@@ -258,7 +268,7 @@ const PIN = '1277';
 const SM = {open:'待處理',progress:'處理中',done:'已完成',wait:'等待中'};
 const SC = {open:'s-open',progress:'s-progress',done:'s-done',wait:'s-wait'};
 
-let issues = [], nextId = 100, filterTab = 'all', filterUrg = false, filterDept = '', isAdmin = false, currentId = null;
+let issues = [], nextId = 100, filterTab = 'all', filterUrg = false, filterDept = '', filterClient = '', isAdmin = false, currentId = null;
 let pinNextAction = '';
 
 document.getElementById('logoImg').src = LOGO_B64;
@@ -372,9 +382,98 @@ function formatDate(d) {
 }
 
 
+
+// ===== 客戶篩選 =====
+function filterByClient(client) {
+  filterClient = client;
+  renderList();
+}
+
+function updateClientFilter() {
+  const sel = document.getElementById('clientFilter');
+  if (!sel) return;
+  const current = sel.value;
+  const clients = [...new Set(issues.map(i => i.client).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">全部客戶</option>' + clients.map(c => `<option value="${c}" ${c===current?'selected':''}>${c}</option>`).join('');
+}
+
+// ===== 匯出 Excel =====
+function exportExcel() {
+  const data = getFiltered();
+  if (!data.length) { alert('目前沒有資料可以匯出！'); return; }
+  
+  const rows = [['工令','客戶','問題標題','狀態','急件','建立日期','部門','負責人員','問題說明','預定完成日','實際完成日','處理紀錄筆數']];
+  data.forEach(i => {
+    const dates = (i.targetDates||[]).map(d => d.date + (d.done?' (延期)':'')).join(', ');
+    const statusMap = {open:'待處理',progress:'處理中',done:'已完成',wait:'等待中'};
+    rows.push([
+      i.wo, i.client, i.title,
+      statusMap[i.status]||i.status,
+      i.urgent?'是':'否',
+      String(i.date||'').slice(0,10),
+      i.dept||'', i.assignee||'', i.desc||'',
+      dates, i.actualDate||'',
+      (i.replies||[]).length + ' 則'
+    ]);
+  });
+  
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:10},{wch:12},{wch:25},{wch:8},{wch:5},{wch:12},{wch:8},{wch:8},{wch:30},{wch:20},{wch:12},{wch:8}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '問題清單');
+  const now = new Date().toISOString().slice(0,10);
+  const deptLabel = filterDept || '全部部門';
+  const clientLabel = filterClient || '全部客戶';
+  XLSX.writeFile(wb, `鴻睿問題清單_${deptLabel}_${clientLabel}_${now}.xlsx`);
+}
+
 function filterByDept(dept) {
   filterDept = dept;
   renderList();
+}
+
+function uploadPhotos(id, input) {
+  const i = issues.find(x => String(x.id) === String(id));
+  if (!i) return;
+  if (!i.photos) i.photos = [];
+  const files = Array.from(input.files);
+  let loaded = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      i.photos.push(e.target.result);
+      loaded++;
+      if (loaded === files.length) renderDetail();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function deletePhoto(id, idx) {
+  const i = issues.find(x => String(x.id) === String(id));
+  if (!i||!i.photos) return;
+  if (!confirm('確定要刪除這張照片嗎？')) return;
+  i.photos.splice(idx, 1);
+  renderDetail();
+}
+
+function viewPhoto(src) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:999;display:flex;align-items:center;justify-content:center';
+  overlay.onclick = () => overlay.remove();
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:95vw;max-height:95vh;object-fit:contain;border-radius:8px';
+  overlay.appendChild(img);
+  document.body.appendChild(overlay);
+}
+
+function deleteReply(id, idx) {
+  const i = issues.find(x => String(x.id) === String(id));
+  if (!i) return;
+  if (!confirm('確定要刪除這筆回覆紀錄嗎？')) return;
+  i.replies.splice(idx, 1);
+  renderDetail();
 }
 
 function saveActualDate(id) {
@@ -408,7 +507,7 @@ function switchTab(t) {
 function toggleUrg() { filterUrg=!filterUrg; document.getElementById('urgBtn').classList.toggle('on',filterUrg); renderList(); }
 
 function renderList() {
-  const baseIssues = filterDept ? issues.filter(i => String(i.dept||'').trim() === filterDept.trim()) : issues;
+  const baseIssues = issues.filter(i => { if(filterDept && String(i.dept||'').trim()!==filterDept.trim()) return false; if(filterClient && String(i.client||'').trim()!==filterClient.trim()) return false; return true; });
   const c={open:0,progress:0,done:0,wait:0};
   baseIssues.forEach(i => c[i.status]=(c[i.status]||0)+1);
   const totalCount = baseIssues.filter(i => i.status !== 'done').length;
@@ -428,9 +527,11 @@ function renderList() {
     }
     if (filterUrg && !i.urgent) return false;
     if (filterDept && String(i.dept||'').trim() !== filterDept.trim()) return false;
+    if (filterClient && String(i.client||'').trim() !== filterClient.trim()) return false;
     if (q && !`${i.wo}${i.client}${i.title}${i.desc}`.toLowerCase().includes(q)) return false;
     return true;
   });
+  updateClientFilter();
   const list = document.getElementById('issueList');
   if (!data.length) { list.innerHTML='<div class="empty-msg">沒有符合的記錄</div>'; return; }
   list.innerHTML = data.map(i => {
@@ -440,9 +541,17 @@ function renderList() {
       const isLast = idx === tds.length-1;
       const isOverdue = !d.done && isLast && formatDate(d.date) < today && i.status !== 'done';
       const isOverdue2 = !d.done && isLast && formatDate(d.date) < today && i.status !== 'done';
-      return `<span class="due-tag ${d.done?'due-old':'due-now'}">📅 ${formatDate(d.date)}</span>${isOverdue2?'<span style="font-size:16px;font-weight:900;color:#cc0000;margin-left:6px;letter-spacing:1px">⚠ 逾時</span>':''}`;
+      const isSoon2 = !d.done && isLast && !isOverdue2 && (()=>{ const diff=(new Date(formatDate(d.date))-new Date())/(1000*60*60*24); return diff>=0&&diff<=3; })();
+      return `<span class="due-tag ${d.done?'due-old':isSoon2?'due-soon':'due-now'}">📅 ${formatDate(d.date)}</span>${isOverdue2?'<span style="font-size:16px;font-weight:900;color:#cc0000;margin-left:6px;letter-spacing:1px">⚠ 逾時</span>':isSoon2?'<span style="font-size:13px;font-weight:700;color:#856404;margin-left:6px">⏰ 即將到期</span>':''}`;
     }).join('');
-    return `<div class="issue-card" onclick="openDetail(${i.id})">
+    const cardWarning = (()=>{
+      const tds = Array.isArray(i.targetDates)?i.targetDates.filter(d=>d&&d.date):[];
+      const last = tds[tds.length-1];
+      if (!last||last.done||i.status==='done') return false;
+      const diff = (new Date(last.date)-new Date())/(1000*60*60*24);
+      return diff>=0 && diff<=3;
+    })();
+    return `<div class="issue-card ${cardWarning?'card-warning':''}" onclick="openDetail(${i.id})">
       <div class="card-top">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span class="client-tag">${i.client}</span>
@@ -487,9 +596,17 @@ function renderDetail() {
     <div class="section">
       <div class="section-title">處理紀錄（${_replies.length} 則）</div>
       <div class="reply-list">
-        ${_replies.length?_replies.map(r=>`<div class="reply-card"><div class="reply-date">${r.date||''}</div><div class="reply-text">${r.text||''}</div></div>`).join(''):'<div class="empty-msg" style="padding:12px">尚無處理紀錄</div>'}
+        ${_replies.length?_replies.map((r,ridx)=>`<div class="reply-card" style="position:relative"><div class="reply-date">${r.date||''}</div><div class="reply-text">${r.text||''}</div>${isAdmin?`<button onclick="deleteReply('${i.id}',${ridx})" style="position:absolute;top:8px;right:8px;background:none;border:none;color:#ccc;font-size:14px;cursor:pointer">🗑</button>`:''}</div>`).join(''):'<div class="empty-msg" style="padding:12px">尚無處理紀錄</div>'}
       </div>
     </div>`;
+  const photosHTML = (i.photos&&i.photos.length) ? `
+    <div class="section">
+      <div class="section-title">附件照片（${i.photos.length} 張）</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+        ${i.photos.map((p,pidx)=>`<div style="position:relative"><img src="${p}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #eee" onclick="viewPhoto('${p}')" />${isAdmin?`<button onclick="deletePhoto('${i.id}',${pidx})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:10px;cursor:pointer">✕</button>`:''}</div>`).join('')}
+      </div>
+    </div>` : '';
+
   const adminHTML = isAdmin ? `
     <div class="admin-area">
       <div class="section-title">生管操作區</div>
@@ -497,8 +614,11 @@ function renderDetail() {
         <div class="admin-btn" onclick="goEdit()">✏ 編輯問題</div>
         <div class="admin-btn danger-btn" onclick="markDelayed()">📅 標記延期</div>
       </div>
-      <button onclick="deleteIssue('${i.id}')" style="width:100%;padding:10px;background:#fff0f0;color:#cc0000;border:1px solid #cc0000;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px">🗑 刪除這筆問題</button>
-      <label class="form-label" style="margin-top:0">更改狀態</label>
+      <div class="admin-grid" style="margin-bottom:10px">
+        <label class="admin-btn" style="text-align:center;cursor:pointer">📷 上傳照片<input type="file" accept="image/*" multiple style="display:none" onchange="uploadPhotos('${i.id}',this)"></label>
+        <div class="admin-btn danger-btn" onclick="deleteIssue('${i.id}')">🗑 刪除問題</div>
+      </div>
+<label class="form-label" style="margin-top:0">更改狀態</label>
       <select class="form-select" onchange="changeStatus(this.value)">
         ${Object.entries(SM).map(([k,v])=>`<option value="${k}" ${i.status===k?'selected':''}>${v}</option>`).join('')}
       </select>
@@ -512,9 +632,6 @@ function renderDetail() {
         <input type="date" id="newDue" style="flex:1;font-size:15px;padding:10px;border:1px solid #ddd;border-radius:8px;outline:none;color:#333" />
         <button class="blue-btn" onclick="addDue()">新增</button>
       </div>
-      <label class="form-label">新增回覆紀錄</label>
-      <textarea class="form-textarea" id="replyInput" placeholder="輸入處理進度…" style="margin-top:6px"></textarea>
-      <button class="blue-btn" style="width:100%;margin-top:8px;padding:12px" onclick="addReply()">送出回覆</button>
     </div>` : '<div class="lock-msg">🔒 需要生管密碼才能編輯</div>';
 
   document.getElementById('detailBody').innerHTML = `
@@ -526,7 +643,13 @@ function renderDetail() {
     <div class="info-row"><span class="info-lbl">部門 / 人員</span><span class="info-val">${(i.dept||'—')+' / '+(i.assignee||'—')}</span></div>
     <div class="info-row"><span class="info-lbl">實際完成日</span><span class="info-val" style="color:${i.actualDate?'#3B6D11':'#bbb'}">${i.actualDate||'尚未完成'}</span></div>
     <div class="desc-box">${i.desc||'（無說明）'}</div>
-    ${dueHTML}${repliesHTML}${adminHTML}`;
+    ${dueHTML}${repliesHTML}
+    <div style="margin-top:12px;padding:12px;background:#f8f9fa;border-radius:8px;border:1px solid #e0e0e0">
+      <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">新增回覆紀錄</div>
+      <textarea class="form-textarea" id="replyInput" placeholder="輸入處理進度或回覆內容…" style="width:100%;margin-top:4px"></textarea>
+      <button class="blue-btn" style="width:100%;margin-top:8px;padding:12px;font-size:14px" onclick="addReply()">✉ 送出回覆</button>
+    </div>
+    ${adminHTML}`;
 }
 
 function changeStatus(st) { const i=issues.find(x=>x.id===currentId); if(i){i.status=st;renderDetail();} }
