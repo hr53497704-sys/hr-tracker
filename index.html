@@ -391,10 +391,10 @@ function switchTab(t) {
 function toggleUrg() { filterUrg=!filterUrg; document.getElementById('urgBtn').classList.toggle('on',filterUrg); renderList(); }
 
 function renderList() {
-  const filteredForStats = filterDept ? issues.filter(i => String(i.dept||'').trim() === filterDept.trim()) : issues;
+  const baseIssues = filterDept ? issues.filter(i => String(i.dept||'').trim() === filterDept.trim()) : issues;
   const c={open:0,progress:0,done:0,wait:0};
-  filteredForStats.forEach(i => c[i.status]=(c[i.status]||0)+1);
-  const totalCount = filteredForStats.length;
+  baseIssues.forEach(i => c[i.status]=(c[i.status]||0)+1);
+  const totalCount = baseIssues.filter(i => i.status !== 'done').length;
   document.getElementById('statsBar').innerHTML = `
     <div class="stat-chip"><div class="stat-num">${totalCount}</div><div class="stat-lbl">全部</div></div>
     <div class="stat-chip"><div class="stat-num" style="color:#993C1D">${c.open}</div><div class="stat-lbl">待處理</div></div>
@@ -402,7 +402,13 @@ function renderList() {
     <div class="stat-chip"><div class="stat-num" style="color:#3B6D11">${c.done}</div><div class="stat-lbl">已完成</div></div>`;
   const q = document.getElementById('searchInput').value.toLowerCase();
   const data = issues.filter(i => {
-    if (filterTab!=='all' && i.status!==filterTab) return false;
+    if (filterTab === 'done') {
+      if (i.status !== 'done') return false;
+    } else if (filterTab === 'all') {
+      if (i.status === 'done') return false;
+    } else {
+      if (i.status !== filterTab) return false;
+    }
     if (filterUrg && !i.urgent) return false;
     if (filterDept && String(i.dept||'').trim() !== filterDept.trim()) return false;
     if (q && !`${i.wo}${i.client}${i.title}${i.desc}`.toLowerCase().includes(q)) return false;
