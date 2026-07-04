@@ -169,7 +169,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <textarea class="form-textarea" id="f_desc" placeholder="詳細說明…"></textarea>
       <label class="form-label">部門</label>
       <select class="form-select" id="f_dept">
-        <option>製造部</option><option>品管部</option><option>維修部</option><option>技術部</option><option>業務部</option>
+        <option>製造部</option><option>機工</option><option>膠工</option><option>電工</option><option>電控</option><option>業務</option><option>採購</option><option>生管</option>
       </select>
       <label class="form-label">負責人員</label>
       <input class="form-input" id="f_assignee" placeholder="輸入姓名" />
@@ -213,7 +213,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <textarea class="form-textarea" id="e_desc"></textarea>
       <label class="form-label">部門</label>
       <select class="form-select" id="e_dept">
-        <option>製造部</option><option>品管部</option><option>維修部</option><option>技術部</option><option>業務部</option>
+        <option>製造部</option><option>機工</option><option>膠工</option><option>電工</option><option>電控</option><option>業務</option><option>採購</option><option>生管</option>
       </select>
       <label class="form-label">負責人員</label>
       <input class="form-input" id="e_assignee" />
@@ -462,7 +462,7 @@ function loadEditForm() {
   document.getElementById('e_assignee').value=i.assignee||'';
   document.getElementById('e_date').value=i.date||'';
   document.getElementById('e_urg').checked=!!i.urgent;
-  ['製造部','品管部','維修部','技術部','業務部'].forEach((d,idx)=>{ if(d===i.dept) document.getElementById('e_dept').selectedIndex=idx; });
+  ['製造部','機工','膠工','電工','電控','業務','採購','生管'].forEach((d,idx)=>{ if(d===i.dept) document.getElementById('e_dept').selectedIndex=idx; });
   Object.keys(SM).forEach((k,idx)=>{ if(k===i.status) document.getElementById('e_status').selectedIndex=idx; });
 }
 function saveEdit() {
