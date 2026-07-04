@@ -45,6 +45,8 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
 .due-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
 .due-tag{font-size:10px;padding:2px 7px;border-radius:4px}
 .due-now{background:#EAF3DE;color:#3B6D11;border:1px solid #C0DD97}
+.due-soon{background:#FFFBE6;color:#856404;border:1px solid #FFD700}
+.card-warning{border-left:4px solid #FFD700 !important}
 .due-old{background:#f5f5f5;color:#999;border:1px solid #e0e0e0;text-decoration:line-through}
 .fab{position:fixed;bottom:24px;right:calc(50% - 220px);background:#2D5A8C;color:#fff;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:26px;box-shadow:0 3px 12px rgba(45,90,140,0.4);border:none;z-index:50;-webkit-tap-highlight-color:transparent}
 @media(max-width:480px){.fab{right:16px}}
@@ -95,6 +97,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
 .add-row input{flex:1;font-size:16px;padding:10px;border:1px solid #ddd;border-radius:8px;outline:none;color:#333;-webkit-appearance:none}
 .add-row input:focus{border-color:#2D5A8C}
 .blue-btn{padding:10px 14px;background:#2D5A8C;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.photo-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .lock-msg{text-align:center;font-size:13px;color:#bbb;padding:14px;background:#f8f9fa;border-radius:8px;margin-top:12px}
 .empty-msg{text-align:center;color:#bbb;font-size:13px;padding:40px 20px}
 /* PIN 輸入區 - 直接嵌在頁面 */
@@ -117,6 +120,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <div class="topbar-title">客戶問題追蹤系統</div>
     </div>
     <button class="save-btn" onclick="saveToSheet()" id="saveBtn">☁ 儲存</button>
+    <button class="save-btn" onclick="exportCSV()" style="background:rgba(255,255,255,0.15);margin-left:4px">📥 匯出</button>
   </div>
   <div class="sync-bar">
     <span class="dot dot-sync" id="syncDot"></span>
@@ -383,6 +387,73 @@ function filterByDept(dept) {
   renderList();
 }
 
+function exportCSV() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const data = issues.filter(i => {
+    if (filterTab === 'done') { if (i.status !== 'done') return false; }
+    else if (filterTab === 'all') { if (i.status === 'done') return false; }
+    else { if (i.status !== filterTab) return false; }
+    if (filterUrg && !i.urgent) return false;
+    if (filterDept && String(i.dept||'').trim() !== filterDept.trim()) return false;
+    if (filterClient && String(i.client||'').trim() !== filterClient.trim()) return false;
+    if (q && !(i.wo+i.client+i.title+i.desc).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if (!data.length) { alert('目前沒有資料可以匯出！'); return; }
+  const SM2 = {open:'待處理',progress:'處理中',done:'已完成',wait:'等待中'};
+  const rows = [['工令','客戶','問題標題','狀態','急件','建立日期','部門','負責人員','問題說明','預定完成日','實際完成日']];
+  data.forEach(i => {
+    const dates = (i.targetDates||[]).map(d => String(d.date).slice(0,10)+(d.done?' (延期)':'')).join(', ');
+    rows.push([i.wo||'', i.client||'', i.title||'', SM2[i.status]||'', i.urgent?'是':'否',
+      String(i.date||'').slice(0,10), i.dept||'', i.assignee||'', i.desc||'',
+      dates, i.actualDate||'']);
+  });
+  const BOM = '﻿';
+  const csv = BOM + rows.map(r => r.map(c => {
+    const s = String(c||'').replace(/"/g, '""');
+    return (s.includes(',') || s.includes('
+') || s.includes('"')) ? '"' + s + '"' : s;
+  }).join(',')).join('
+');
+  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '鴻睿問題清單_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+function deleteReply(id, idx) {
+  const i = issues.find(x => String(x.id) === String(id));
+  if (!i) return;
+  if (!confirm('確定要刪除這筆回覆紀錄嗎？')) return;
+  i.replies.splice(idx, 1);
+  renderDetail();
+}
+function uploadPhotos(id, input) {
+  const i = issues.find(x => String(x.id) === String(id));
+  if (!i) return;
+  if (!i.photos) i.photos = [];
+  Array.from(input.files).forEach(file => {
+    const r = new FileReader();
+    r.onload = e => { i.photos.push(e.target.result); renderDetail(); };
+    r.readAsDataURL(file);
+  });
+}
+function deletePhoto(id, idx) {
+  const i = issues.find(x => String(x.id) === String(id));
+  if (!i || !i.photos) return;
+  if (!confirm('確定要刪除這張照片嗎？')) return;
+  i.photos.splice(idx, 1); renderDetail();
+}
+function viewPhoto(src) {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:999;display:flex;align-items:center;justify-content:center;cursor:pointer';
+  ov.onclick = () => ov.remove();
+  const img = document.createElement('img');
+  img.src = src; img.style.cssText = 'max-width:95vw;max-height:95vh;object-fit:contain;border-radius:8px';
+  ov.appendChild(img); document.body.appendChild(ov);
+}
 function filterByClient(c) { filterClient = c; renderList(); }
 function updateClientFilter() {
   const sel = document.getElementById('clientFilter');
@@ -453,13 +524,18 @@ function renderList() {
   list.innerHTML = data.map(i => {
     const today = new Date().toISOString().slice(0,10);
     const tds = Array.isArray(i.targetDates) ? i.targetDates.filter(d=>d&&d.date) : [];
-    const dueTags = tds.map((d,idx) => {
-      const isLast = idx === tds.length-1;
-      const isOverdue = !d.done && isLast && formatDate(d.date) < today && i.status !== 'done';
-      const isOverdue2 = !d.done && isLast && formatDate(d.date) < today && i.status !== 'done';
-      return `<span class="due-tag ${d.done?'due-old':'due-now'}">📅 ${formatDate(d.date)}</span>${isOverdue2?'<span style="font-size:16px;font-weight:900;color:#cc0000;margin-left:6px;letter-spacing:1px">⚠ 逾時</span>':''}`;
+    const last = tds[tds.length-1];
+    const isOver = last&&!last.done&&formatDate(last.date)<today&&i.status!=='done';
+    const diff = last&&!last.done ? (new Date(formatDate(last.date))-new Date())/86400000 : 999;
+    const isSoon = !isOver&&diff>=0&&diff<=3&&i.status!=='done';
+    const dueTags = tds.map((d,ix)=>{
+      const isLast=ix===tds.length-1;
+      const cls=d.done?'due-old':(isSoon&&isLast)?'due-soon':'due-now';
+      const ext=isOver&&isLast?' <strong style="color:#cc0000;font-weight:900">▲逾時</strong>':
+                isSoon&&isLast?' <strong style="color:#856404;font-weight:700">⏰即將到期</strong>':'';
+      return '<span class="due-tag '+cls+'">📅 '+formatDate(d.date)+ext+'</span>';
     }).join('');
-    return `<div class="issue-card" onclick="openDetail(${i.id})">
+    return `<div class="issue-card ${isSoon?'card-warning':''}" onclick="openDetail(${i.id})">
       <div class="card-top">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span class="client-tag">${i.client}</span>
@@ -500,6 +576,8 @@ function renderDetail() {
       </div>
     </div>` : '';
   const _replies = Array.isArray(i.replies) ? i.replies.filter(r=>r&&r.text) : [];
+  const _photos = Array.isArray(i.photos) ? i.photos : [];
+  const photosHTML = _photos.length ? `<div class="section"><div class="section-title">附件照片（${_photos.length}張）</div><div class="photo-grid">${_photos.map((p,px)=>'<div style="position:relative"><img src="'+p+'" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid #eee;cursor:pointer" onclick="viewPhoto(this.src)" /><button onclick="deletePhoto(\''+i.id+'\','+px+')" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:10px;cursor:pointer">✕</button></div>').join('')}</div></div>` : '';
   const repliesHTML = `
     <div class="section">
       <div class="section-title">處理紀錄（${_replies.length} 則）</div>
@@ -514,7 +592,12 @@ function renderDetail() {
         <div class="admin-btn" onclick="goEdit()">✏ 編輯問題</div>
         <div class="admin-btn danger-btn" onclick="markDelayed()">📅 標記延期</div>
       </div>
-      <button onclick="deleteIssue('${i.id}')" style="width:100%;padding:10px;background:#fff0f0;color:#cc0000;border:1px solid #cc0000;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px">🗑 刪除這筆問題</button>
+      <div class="admin-grid" style="margin-bottom:10px">
+        <label class="admin-btn" style="text-align:center;cursor:pointer">📷 上傳照片
+          <input type="file" accept="image/*" multiple style="display:none" onchange="uploadPhotos('${i.id}',this)">
+        </label>
+        <div class="admin-btn danger-btn" onclick="deleteIssue('${i.id}')">🗑 刪除問題</div>
+      </div>
       <label class="form-label" style="margin-top:0">更改狀態</label>
       <select class="form-select" onchange="changeStatus(this.value)">
         ${Object.entries(SM).map(([k,v])=>`<option value="${k}" ${i.status===k?'selected':''}>${v}</option>`).join('')}
@@ -543,7 +626,13 @@ function renderDetail() {
     <div class="info-row"><span class="info-lbl">部門 / 人員</span><span class="info-val">${(i.dept||'—')+' / '+(i.assignee||'—')}</span></div>
     <div class="info-row"><span class="info-lbl">實際完成日</span><span class="info-val" style="color:${i.actualDate?'#3B6D11':'#bbb'}">${i.actualDate||'尚未完成'}</span></div>
     <div class="desc-box">${i.desc||'（無說明）'}</div>
-    ${dueHTML}${repliesHTML}${adminHTML}`;
+    ${dueHTML}${photosHTML}${repliesHTML}
+    <div style="margin-top:12px;padding:12px;background:#f8f9fa;border-radius:8px;border:1px solid #e0e0e0">
+      <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:8px">新增回覆紀錄（所有人可填）</div>
+      <textarea class="form-textarea" id="replyInput" placeholder="輸入處理進度或回覆內容…" style="width:100%;margin-top:4px"></textarea>
+      <button class="blue-btn" style="width:100%;margin-top:8px;padding:12px" onclick="addReply()">✉ 送出回覆</button>
+    </div>
+    ${adminHTML}`;
 }
 
 function changeStatus(st) { const i=issues.find(x=>x.id===currentId); if(i){i.status=st;renderDetail();} }
