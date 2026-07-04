@@ -39,6 +39,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
 .s-done{background:#EAF3DE;color:#3B6D11}
 .s-wait{background:#EEF4FB;color:#185FA5}
 .client-tag{background:#f0f0f0;border:1px solid #e0e0e0;border-radius:4px;padding:2px 6px;font-size:11px;color:#555}
+.dept-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:transparent;border:2px solid #cc0000;color:#222;font-size:13px;font-weight:700;font-style:italic;flex-shrink:0}
 .card-title{font-size:14px;font-weight:600;color:#222;margin-bottom:5px;line-height:1.4}
 .card-meta{font-size:11px;color:#888;display:flex;gap:8px;flex-wrap:wrap}
 .due-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
@@ -361,6 +362,12 @@ function formatDate(d) {
   try { return new Date(d).toISOString().slice(0,10); } catch(e) { return s; }
 }
 
+const DEPT_SHORT = {'製造部':'製','機工':'機','膠工':'膠','電工':'電','電控':'控','設計':'設','業務':'業','採購':'採','生管':'生'};
+function getDeptBadge(dept) {
+  const s = DEPT_SHORT[dept] || (dept?dept.slice(0,1):'?');
+  return `<span class="dept-badge">${s}</span>`;
+}
+
 function filterByDept(dept) {
   filterDept = dept;
   renderList();
@@ -382,10 +389,12 @@ function switchTab(t) {
 function toggleUrg() { filterUrg=!filterUrg; document.getElementById('urgBtn').classList.toggle('on',filterUrg); renderList(); }
 
 function renderList() {
+  const filteredForStats = filterDept ? issues.filter(i => String(i.dept||'').trim() === filterDept.trim()) : issues;
   const c={open:0,progress:0,done:0,wait:0};
-  issues.forEach(i => c[i.status]=(c[i.status]||0)+1);
+  filteredForStats.forEach(i => c[i.status]=(c[i.status]||0)+1);
+  const totalCount = filteredForStats.length;
   document.getElementById('statsBar').innerHTML = `
-    <div class="stat-chip"><div class="stat-num">${issues.length}</div><div class="stat-lbl">全部</div></div>
+    <div class="stat-chip"><div class="stat-num">${totalCount}</div><div class="stat-lbl">全部</div></div>
     <div class="stat-chip"><div class="stat-num" style="color:#993C1D">${c.open}</div><div class="stat-lbl">待處理</div></div>
     <div class="stat-chip"><div class="stat-num" style="color:#854F0B">${c.progress}</div><div class="stat-lbl">處理中</div></div>
     <div class="stat-chip"><div class="stat-num" style="color:#3B6D11">${c.done}</div><div class="stat-lbl">已完成</div></div>`;
@@ -414,7 +423,10 @@ function renderList() {
           <span class="client-tag">${i.client}</span>
           ${i.urgent?'<span style="font-size:11px;color:#993C1D;font-weight:600">🔴 急件</span>':''}
         </div>
-        <span class="badge ${SC[i.status]}">${SM[i.status]}</span>
+        <div style="display:flex;align-items:center;gap:5px">
+          ${getDeptBadge(i.dept)}
+          <span class="badge ${SC[i.status]}">${SM[i.status]}</span>
+        </div>
       </div>
       <div class="card-title">${i.title}</div>
       <div class="card-meta">
