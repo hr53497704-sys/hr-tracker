@@ -393,6 +393,7 @@ function renderList() {
   const data = issues.filter(i => {
     if (filterTab!=='all' && i.status!==filterTab) return false;
     if (filterUrg && !i.urgent) return false;
+    if (filterDept && String(i.dept||'').trim() !== filterDept.trim()) return false;
     if (q && !`${i.wo}${i.client}${i.title}${i.desc}`.toLowerCase().includes(q)) return false;
     return true;
   });
