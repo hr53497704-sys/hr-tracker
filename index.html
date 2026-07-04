@@ -402,29 +402,47 @@ function exportExcel() {
   const data = getFiltered();
   if (!data.length) { alert('目前沒有資料可以匯出！'); return; }
   
-  const rows = [['工令','客戶','問題標題','狀態','急件','建立日期','部門','負責人員','問題說明','預定完成日','實際完成日','處理紀錄筆數']];
+  const statusMap = {open:'待處理',progress:'處理中',done:'已完成',wait:'等待中'};
+  const header = ['工令','客戶','問題標題','狀態','急件','建立日期','部門','負責人員','問題說明','預定完成日','實際完成日','處理紀錄筆數'];
+  
+  const rows = [header];
   data.forEach(i => {
     const dates = (i.targetDates||[]).map(d => d.date + (d.done?' (延期)':'')).join(', ');
-    const statusMap = {open:'待處理',progress:'處理中',done:'已完成',wait:'等待中'};
     rows.push([
-      i.wo, i.client, i.title,
-      statusMap[i.status]||i.status,
+      i.wo||'', i.client||'', i.title||'',
+      statusMap[i.status]||i.status||'',
       i.urgent?'是':'否',
       String(i.date||'').slice(0,10),
       i.dept||'', i.assignee||'', i.desc||'',
-      dates, i.actualDate||'',
+      dates||'', i.actualDate||'',
       (i.replies||[]).length + ' 則'
     ]);
   });
   
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{wch:10},{wch:12},{wch:25},{wch:8},{wch:5},{wch:12},{wch:8},{wch:8},{wch:30},{wch:20},{wch:12},{wch:8}];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '問題清單');
+  // 用 CSV 格式匯出（Excel 可以直接開啟）
+  const BOM = '﻿';
+  const csv = BOM + rows.map(row => 
+    row.map(cell => {
+      const s = String(cell||'').replace(/"/g, '""');
+      return s.includes(',') || s.includes('
+') || s.includes('"') ? `"${s}"` : s;
+    }).join(',')
+  ).join('
+');
+  
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
   const now = new Date().toISOString().slice(0,10);
   const deptLabel = filterDept || '全部部門';
-  const clientLabel = filterClient || '全部客戶';
-  XLSX.writeFile(wb, `鴻睿問題清單_${deptLabel}_${clientLabel}_${now}.xlsx`);
+  a.href = url;
+  a.download = `鴻睿問題清單_${deptLabel}_${now}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  setSyncStatus('ok', '已匯出 ' + data.length + ' 筆資料');
 }
 
 function filterByDept(dept) {
@@ -643,7 +661,7 @@ function renderDetail() {
     <div class="info-row"><span class="info-lbl">部門 / 人員</span><span class="info-val">${(i.dept||'—')+' / '+(i.assignee||'—')}</span></div>
     <div class="info-row"><span class="info-lbl">實際完成日</span><span class="info-val" style="color:${i.actualDate?'#3B6D11':'#bbb'}">${i.actualDate||'尚未完成'}</span></div>
     <div class="desc-box">${i.desc||'（無說明）'}</div>
-    ${dueHTML}${repliesHTML}
+    ${dueHTML}${repliesHTML}${photosHTML}
     <div style="margin-top:12px;padding:12px;background:#f8f9fa;border-radius:8px;border:1px solid #e0e0e0">
       <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">新增回覆紀錄</div>
       <textarea class="form-textarea" id="replyInput" placeholder="輸入處理進度或回覆內容…" style="width:100%;margin-top:4px"></textarea>
