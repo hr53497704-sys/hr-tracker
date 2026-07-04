@@ -136,6 +136,12 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <div class="urg-btn" id="urgBtn" onclick="toggleUrg()">🔴 急件</div>
     </div>
     <div style="padding:7px 12px;background:#f8f9fa;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;color:#666;white-space:nowrap">🏭 客戶：</span>
+      <select id="clientFilter" onchange="filterByClient(this.value)" style="flex:1;font-size:13px;padding:7px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#333;outline:none">
+        <option value="">全部客戶</option>
+      </select>
+    </div>
+    <div style="padding:7px 12px;background:#f8f9fa;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;gap:8px">
       <span style="font-size:12px;color:#666;white-space:nowrap">🏢 部門：</span>
       <select id="deptFilter" onchange="filterByDept(this.value)" style="flex:1;font-size:13px;padding:7px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#333;outline:none">
         <option value="">全部部門</option><option>製造部</option><option>機工</option><option>膠工</option><option>電工</option><option>電控</option><option>設計</option><option>業務</option><option>採購</option><option>生管</option>
@@ -377,6 +383,16 @@ function filterByDept(dept) {
   renderList();
 }
 
+function filterByClient(client) { filterClient = client; renderList(); }
+function updateClientFilter() {
+  const sel = document.getElementById('clientFilter');
+  if (!sel) return;
+  const cur = sel.value;
+  const clients = [...new Set(issues.map(i => i.client).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">全部客戶</option>' + clients.map(c =>
+    '<option value="'+c+'"'+(c===cur?' selected':'')+'>'+c+'</option>'
+  ).join('');
+}
 function saveActualDate(id) {
   const i = issues.find(x => String(x.id) === String(id));
   if (!i) return;
@@ -428,6 +444,7 @@ function renderList() {
     }
     if (filterUrg && !i.urgent) return false;
     if (filterDept && String(i.dept||'').trim() !== filterDept.trim()) return false;
+    if (filterClient && String(i.client||'').trim() !== filterClient.trim()) return false;
     if (q && !`${i.wo}${i.client}${i.title}${i.desc}`.toLowerCase().includes(q)) return false;
     return true;
   });
