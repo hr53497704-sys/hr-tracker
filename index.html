@@ -47,6 +47,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
 .due-now{background:#EAF3DE;color:#3B6D11;border:1px solid #C0DD97}
 .due-soon{background:#FFFBE6;color:#856404;border:1px solid #FFD700}
 .card-warning{border-left:4px solid #FFD700 !important}
+.card-overdue{border-left:4px solid #cc0000 !important}
 .due-old{background:#f5f5f5;color:#999;border:1px solid #e0e0e0;text-decoration:line-through}
 .fab{position:fixed;bottom:24px;right:calc(50% - 220px);background:#2D5A8C;color:#fff;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:26px;box-shadow:0 3px 12px rgba(45,90,140,0.4);border:none;z-index:50;-webkit-tap-highlight-color:transparent}
 @media(max-width:480px){.fab{right:16px}}
@@ -566,7 +567,7 @@ function renderList() {
                 isSoon&&isLast?' <strong style="color:#856404;font-weight:700">⏰即將到期</strong>':'';
       return '<span class="due-tag '+cls+'">📅 '+formatDate(d.date)+ext+'</span>';
     }).join('');
-    return `<div class="issue-card ${isSoon?'card-warning':''}" onclick="openDetail(${i.id})">
+    return `<div class="issue-card ${isOver?'card-overdue':isSoon?'card-warning':''}" onclick="openDetail(${i.id})">
       <div class="card-top">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span class="client-tag">${i.client}</span>
