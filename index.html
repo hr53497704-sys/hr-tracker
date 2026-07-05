@@ -573,14 +573,14 @@ function renderList() {
     return true;
   });
   // 排序：逾時 > 即將到期 > 其他（依預定完成日）
-  const today = new Date().toISOString().slice(0,10);
+  const sortToday = new Date().toISOString().slice(0,10);
   data.sort(function(a, b) {
     function getScore(i) {
       var tds = Array.isArray(i.targetDates) ? i.targetDates.filter(function(d){return d&&d.date;}) : [];
       var last = tds[tds.length-1];
       if (!last || last.done || i.status === 'done') return 3;
       var fd = String(last.date).slice(0,10);
-      if (fd < today) return 0; // 逾時
+      if (fd < sortToday) return 0; // 逾時
       var diff = (new Date(fd) - new Date()) / 86400000;
       if (diff <= 3) return 1; // 即將到期
       return 2; // 一般
