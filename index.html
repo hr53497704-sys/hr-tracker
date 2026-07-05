@@ -495,6 +495,7 @@ function switchTab(t) {
 function toggleUrg() { filterUrg=!filterUrg; document.getElementById('urgBtn').classList.toggle('on',filterUrg); renderList(); }
 
 function renderList() {
+  updateClientFilter();
   const baseIssues = filterDept ? issues.filter(i => String(i.dept||'').trim() === filterDept.trim()) : issues;
   const c={open:0,progress:0,done:0,wait:0};
   baseIssues.forEach(i => c[i.status]=(c[i.status]||0)+1);
