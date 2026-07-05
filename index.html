@@ -388,8 +388,10 @@ async function loadFromSheet() {
     clearTimeout(timeout);
     const text = await r.text();
     const data = JSON.parse(text);
-    if (data.issues && Array.isArray(data.issues) && data.issues.length > 0) {
-      issues = data.issues.map(i => ({
+    // 同時支援 {issues:[...]} 和直接陣列兩種格式
+    const issueList = Array.isArray(data) ? data : (data.issues || []);
+    if (issueList && Array.isArray(issueList) && issueList.length > 0) {
+      issues = issueList.map(i => ({
         ...i,
         date: String(i.date||'').slice(0,10),
         targetDates: Array.isArray(i.targetDates) ? i.targetDates.filter(d=>d&&d.date) : [],
@@ -397,9 +399,12 @@ async function loadFromSheet() {
       }));
       nextId = Math.max(...issues.map(i => parseInt(i.id)||0)) + 1;
       setSyncStatus('ok', '已同步 · ' + new Date().toLocaleTimeString('zh-TW'));
-    } else {
+    } else if (issueList && issueList.length === 0) {
       issues = [];
       setSyncStatus('ok', '尚無資料，請新增問題');
+    } else {
+      issues = [];
+      setSyncStatus('err', '資料格式異常，請按儲存重試');
     }
   } catch(e) {
     issues = [];
