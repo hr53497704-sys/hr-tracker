@@ -111,7 +111,6 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
 .pin-btns{display:flex;gap:8px;margin-top:10px}
 .pin-btns button{flex:1;padding:10px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;-webkit-tap-highlight-color:transparent}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -123,7 +122,6 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
     </div>
     <button class="save-btn" onclick="saveToSheet()" id="saveBtn">☁ 儲存</button>
     <button class="save-btn" onclick="exportCSV()" style="background:rgba(255,255,255,0.15);margin-left:4px">📥 匯出</button>
-    <button class="save-btn" onclick="showStatsPage()" style="background:rgba(255,165,0,0.3);margin-left:4px;border-color:rgba(255,165,0,0.6)">📊 績效</button>
   </div>
   <div class="sync-bar">
     <span class="dot dot-sync" id="syncDot"></span>
@@ -218,63 +216,6 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
   <div class="page" id="detailPage">
     <div class="back-btn" onclick="showList()">← 返回列表</div>
     <div class="detail-body" id="detailBody"></div>
-  </div>
-
-  <!-- 績效頁 -->
-  <div class="page" id="statsPage">
-    <div class="back-btn" onclick="showList()">← 返回列表</div>
-    <div style="padding:14px;overflow-y:auto;flex:1;padding-bottom:30px">
-      <div style="font-size:16px;font-weight:700;color:#2D5A8C;margin-bottom:4px">📊 月度績效儀表板</div>
-      <div style="font-size:11px;color:#888;margin-bottom:14px" id="statsUpdateTime">載入中...</div>
-
-      <!-- KPI 區 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px" id="kpiArea">
-        <div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:12px;text-align:center">
-          <div style="font-size:24px;font-weight:800;color:#2D5A8C" id="kpi_total">-</div>
-          <div style="font-size:11px;color:#888;margin-top:2px">總任務數</div>
-        </div>
-        <div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:12px;text-align:center">
-          <div style="font-size:24px;font-weight:800;color:#3B6D11" id="kpi_rate">-</div>
-          <div style="font-size:11px;color:#888;margin-top:2px">整體準時率</div>
-        </div>
-        <div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:12px;text-align:center">
-          <div style="font-size:24px;font-weight:800;color:#993C1D" id="kpi_overdue">-</div>
-          <div style="font-size:11px;color:#888;margin-top:2px">逾期件數</div>
-        </div>
-        <div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:12px;text-align:center">
-          <div style="font-size:24px;font-weight:800;color:#854F0B" id="kpi_pending">-</div>
-          <div style="font-size:11px;color:#888;margin-top:2px">未結案件</div>
-        </div>
-      </div>
-
-      <!-- 圖表1：每月準時率折線 -->
-      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:14px;margin-bottom:12px">
-        <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:10px">📉 每月準時率趨勢</div>
-        <canvas id="chart_line" style="width:100%;height:200px"></canvas>
-      </div>
-
-      <!-- 圖表2：每月件數長條 -->
-      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:14px;margin-bottom:12px">
-        <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:10px">📊 每月準時 vs 逾期件數</div>
-        <canvas id="chart_bar" style="width:100%;height:200px"></canvas>
-      </div>
-
-      <!-- 圖表3：部門逾期 -->
-      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:14px;margin-bottom:12px">
-        <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:10px">🏭 各部門逾期次數</div>
-        <canvas id="chart_dept" style="width:100%;height:220px"></canvas>
-      </div>
-
-      <!-- 明細表 -->
-      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:14px;margin-bottom:12px">
-        <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:10px">📋 每月明細數字</div>
-        <div id="statsTable" style="overflow-x:auto"></div>
-      </div>
-
-      <div style="background:#EEF4FB;border:1px solid #C8DFF5;border-radius:10px;padding:10px;font-size:11px;color:#2D5A8C">
-        💡 按下上方「☁ 儲存」時，Google 試算表裡的「月度績效統計」活頁會自動更新圖表！
-      </div>
-    </div>
   </div>
 
   <!-- 編輯頁 -->
@@ -388,10 +329,8 @@ async function loadFromSheet() {
     clearTimeout(timeout);
     const text = await r.text();
     const data = JSON.parse(text);
-    // 同時支援 {issues:[...]} 和直接陣列兩種格式
-    const issueList = Array.isArray(data) ? data : (data.issues || []);
-    if (issueList && Array.isArray(issueList) && issueList.length > 0) {
-      issues = issueList.map(i => ({
+    if (data.issues && Array.isArray(data.issues) && data.issues.length > 0) {
+      issues = data.issues.map(i => ({
         ...i,
         date: String(i.date||'').slice(0,10),
         targetDates: Array.isArray(i.targetDates) ? i.targetDates.filter(d=>d&&d.date) : [],
@@ -399,12 +338,9 @@ async function loadFromSheet() {
       }));
       nextId = Math.max(...issues.map(i => parseInt(i.id)||0)) + 1;
       setSyncStatus('ok', '已同步 · ' + new Date().toLocaleTimeString('zh-TW'));
-    } else if (issueList && issueList.length === 0) {
-      issues = [];
-      setSyncStatus('ok', '尚無資料，請新增問題');
     } else {
       issues = [];
-      setSyncStatus('err', '資料格式異常，請按儲存重試');
+      setSyncStatus('ok', '尚無資料，請新增問題');
     }
   } catch(e) {
     issues = [];
@@ -858,180 +794,6 @@ function saveNew() {
 
 // Enter 鍵確認密碼
 document.getElementById('pinInput').addEventListener('keypress', function(e){ if(e.key==='Enter') confirmPin(); });
-
-// ═══════════════════════════════════════════════
-// 績效儀表板
-// ═══════════════════════════════════════════════
-var _chartLine = null, _chartBar = null, _chartDept = null;
-
-function showStatsPage() {
-  showPage('statsPage');
-  renderStats();
-}
-
-function renderStats() {
-  var today = new Date().toISOString().slice(0,10);
-  document.getElementById('statsUpdateTime').textContent = '資料更新：' + today + '（來自目前 APP 資料）';
-
-  // ── 計算月統計 ──
-  var monthMap = {};
-  var deptMap = {};
-  var totalAll = 0, totalDone = 0, totalOntime = 0, totalOverdue = 0, totalPending = 0;
-
-  issues.forEach(function(i) {
-    if (!i || !i.date) return;
-    var ym = String(i.date).slice(0,7);
-    if (!monthMap[ym]) monthMap[ym] = { total:0, done:0, ontime:0, overdue:0, pending:0 };
-    var m = monthMap[ym];
-    m.total++; totalAll++;
-
-    if (i.status === 'done') {
-      m.done++; totalDone++;
-      var tds = Array.isArray(i.targetDates) ? i.targetDates.filter(function(d){return d&&d.date;}) : [];
-      var lastDue = tds.length ? String(tds[tds.length-1].date).slice(0,10) : null;
-      var actual = i.actualDate ? String(i.actualDate).slice(0,10) : null;
-      if (actual && lastDue && actual > lastDue) { m.overdue++; totalOverdue++; }
-      else { m.ontime++; totalOntime++; }
-    } else {
-      m.pending++; totalPending++;
-      var tds2 = Array.isArray(i.targetDates) ? i.targetDates.filter(function(d){return d&&d.date;}) : [];
-      var last2 = tds2.length ? tds2[tds2.length-1] : null;
-      if (last2 && !last2.done && String(last2.date).slice(0,10) < today) { m.overdue++; totalOverdue++; }
-    }
-
-    // 部門逾期統計
-    var dept = i.dept || '未指定';
-    if (!deptMap[dept]) deptMap[dept] = { overdue:0, total:0 };
-    deptMap[dept].total++;
-    var tds3 = Array.isArray(i.targetDates) ? i.targetDates.filter(function(d){return d&&d.date;}) : [];
-    var last3 = tds3.length ? tds3[tds3.length-1] : null;
-    if (i.status !== 'done' && last3 && !last3.done && String(last3.date).slice(0,10) < today) {
-      deptMap[dept].overdue++;
-    }
-    if (i.status === 'done') {
-      var lastDueD = last3 ? String(last3.date).slice(0,10) : null;
-      var actualD = i.actualDate ? String(i.actualDate).slice(0,10) : null;
-      if (actualD && lastDueD && actualD > lastDueD) deptMap[dept].overdue++;
-    }
-  });
-
-  // ── KPI ──
-  var overallRate = totalDone > 0 ? Math.round(totalOntime / totalDone * 100) : 0;
-  document.getElementById('kpi_total').textContent = totalAll + ' 件';
-  document.getElementById('kpi_rate').textContent = overallRate + '%';
-  document.getElementById('kpi_overdue').textContent = totalOverdue + ' 件';
-  document.getElementById('kpi_pending').textContent = totalPending + ' 件';
-
-  // ── 排序月份 ──
-  var months = Object.keys(monthMap).sort();
-  if (months.length === 0) {
-    document.getElementById('statsTable').innerHTML = '<div style="text-align:center;color:#bbb;padding:20px">尚無資料</div>';
-    return;
-  }
-
-  var labels = months;
-  var ontimeRates = months.map(function(ym){ var m=monthMap[ym]; return m.done>0?Math.round(m.ontime/m.done*100):0; });
-  var ontimeCounts = months.map(function(ym){ return monthMap[ym].ontime; });
-  var overdueCounts = months.map(function(ym){ return monthMap[ym].overdue; });
-
-  // ── 圖表1：折線 ──
-  var ctx1 = document.getElementById('chart_line').getContext('2d');
-  if (_chartLine) _chartLine.destroy();
-  _chartLine = new Chart(ctx1, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: '準時率 %',
-        data: ontimeRates,
-        borderColor: '#3B6D11',
-        backgroundColor: 'rgba(59,109,17,0.1)',
-        borderWidth: 2.5,
-        pointRadius: 5,
-        pointBackgroundColor: '#3B6D11',
-        fill: true,
-        tension: 0.3
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { font:{size:12}, boxWidth:14 } } },
-      scales: {
-        y: { min:0, max:100, ticks:{ callback: function(v){return v+'%';}, font:{size:11} }, grid:{color:'#f0f0f0'} },
-        x: { ticks:{ font:{size:10} }, grid:{display:false} }
-      }
-    }
-  });
-
-  // ── 圖表2：長條 ──
-  var ctx2 = document.getElementById('chart_bar').getContext('2d');
-  if (_chartBar) _chartBar.destroy();
-  _chartBar = new Chart(ctx2, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [
-        { label:'準時完成', data: ontimeCounts, backgroundColor:'#3B6D11', borderRadius:4 },
-        { label:'逾期件數', data: overdueCounts, backgroundColor:'#e05252', borderRadius:4 }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { font:{size:12}, boxWidth:14 } } },
-      scales: {
-        y: { ticks:{ font:{size:11} }, grid:{color:'#f0f0f0'} },
-        x: { ticks:{ font:{size:10} }, grid:{display:false} }
-      }
-    }
-  });
-
-  // ── 圖表3：部門橫條 ──
-  var depts = Object.keys(deptMap).sort(function(a,b){ return deptMap[b].overdue - deptMap[a].overdue; });
-  var deptOverdue = depts.map(function(d){ return deptMap[d].overdue; });
-  var deptColors = deptOverdue.map(function(v){
-    if (v >= 5) return '#e05252';
-    if (v >= 3) return '#e0a052';
-    if (v >= 1) return '#e0c552';
-    return '#3B6D11';
-  });
-  var ctx3 = document.getElementById('chart_dept').getContext('2d');
-  if (_chartDept) _chartDept.destroy();
-  _chartDept = new Chart(ctx3, {
-    type: 'bar',
-    data: {
-      labels: depts,
-      datasets: [{ label:'逾期次數', data: deptOverdue, backgroundColor: deptColors, borderRadius:4 }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend:{ display:false } },
-      scales: {
-        x: { ticks:{font:{size:11}}, grid:{color:'#f0f0f0'} },
-        y: { ticks:{font:{size:12}}, grid:{display:false} }
-      }
-    }
-  });
-
-  // ── 明細表 ──
-  var html = '<table style="width:100%;border-collapse:collapse;font-size:12px">';
-  html += '<tr style="background:#2D5A8C;color:#fff"><th style="padding:7px 6px">月份</th><th>新增</th><th>完成</th><th>準時</th><th>逾期</th><th style="color:#FFD700">準時率</th></tr>';
-  months.forEach(function(ym, idx) {
-    var m = monthMap[ym];
-    var rate = m.done > 0 ? Math.round(m.ontime/m.done*100) : 0;
-    var rateColor = rate>=80?'#3B6D11':rate>=60?'#854F0B':'#993C1D';
-    html += '<tr style="background:'+(idx%2===0?'#f8f9fa':'#fff')+'">';
-    html += '<td style="padding:6px 6px;font-weight:600">'+ym+'</td>';
-    html += '<td style="text-align:center">'+m.total+'</td>';
-    html += '<td style="text-align:center">'+m.done+'</td>';
-    html += '<td style="text-align:center;color:#3B6D11;font-weight:600">'+m.ontime+'</td>';
-    html += '<td style="text-align:center;color:#993C1D;font-weight:600">'+m.overdue+'</td>';
-    html += '<td style="text-align:center;color:'+rateColor+';font-weight:700">'+rate+'%</td>';
-    html += '</tr>';
-  });
-  html += '</table>';
-  document.getElementById('statsTable').innerHTML = html;
-}
 
 loadFromSheet();
 </script>
