@@ -498,6 +498,27 @@ function viewPhoto(src) {
 }
 
 
+
+function editDue(id, idx) {
+  var i = issues.find(function(x) { return String(x.id) === String(id); });
+  if (!i || !i.targetDates[idx]) return;
+  var oldDate = i.targetDates[idx].date;
+  var newDate = prompt('修改預定完成日：', oldDate);
+  if (newDate === null) return;
+  newDate = newDate.trim();
+  if (!newDate) { alert('日期不能空白'); return; }
+  i.targetDates[idx].date = newDate;
+  renderDetail();
+}
+
+function deleteDue(id, idx) {
+  var i = issues.find(function(x) { return String(x.id) === String(id); });
+  if (!i) return;
+  if (!confirm('確定要刪除這筆預定完成日嗎？')) return;
+  i.targetDates.splice(idx, 1);
+  renderDetail();
+}
+
 function editReply(id, idx) {
   var i = issues.find(function(x) { return String(x.id) === String(id); });
   if (!i || !i.replies[idx]) return;
@@ -603,7 +624,7 @@ function renderDetail() {
         ${_tds.map((d,idx)=>{
           const isLast=idx===_tds.length-1;
           const isOverdue=!d.done&&isLast&&formatDate(d.date)<_today&&i.status!=='done';
-          return `<div class="due-item"><div class="due-dot" style="background:${d.done?'#993C1D':'#3B6D11'}"></div><span class="${d.done?'crossed':isLast?'latest-due':''}">${formatDate(d.date)}${d.done?' (延期)':isLast?' 【目前預定】':''}${isOverdue?' <strong style=\'color:#cc0000\'>⚠逾時</strong>':''}</span></div>`;
+          return `<div class="due-item" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="display:flex;align-items:center;gap:6px"><div class="due-dot" style="background:${d.done?'#993C1D':'#3B6D11'}"></div><span class="${d.done?'crossed':isLast?'latest-due':''}">${formatDate(d.date)}${d.done?' (延期)':isLast?' 【目前預定】':''}${isOverdue?' <strong style=\'color:#cc0000\'>⚠逾時</strong>':''}</span></div>${isAdmin?`<div style="display:flex;gap:4px"><button onclick="editDue('${i.id}',${idx})" style="background:none;border:none;color:#aaa;font-size:12px;cursor:pointer">✏️</button><button onclick="deleteDue('${i.id}',${idx})" style="background:none;border:none;color:#ccc;font-size:12px;cursor:pointer">🗑</button></div>`:''}</div>`;
         }).join('')}
       </div>
     </div>` : '';
