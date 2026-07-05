@@ -496,6 +496,19 @@ function viewPhoto(src) {
   document.body.appendChild(ov);
 }
 
+
+function editReply(id, idx) {
+  var i = issues.find(function(x) { return String(x.id) === String(id); });
+  if (!i || !i.replies[idx]) return;
+  var oldText = i.replies[idx].text;
+  var newText = prompt('修改回覆內容：', oldText);
+  if (newText === null) return;
+  newText = newText.trim();
+  if (!newText) { alert('回覆內容不能空白'); return; }
+  i.replies[idx].text = newText;
+  renderDetail();
+}
+
 function deleteReply(id, idx) {
   var i = issues.find(function(x) { return String(x.id) === String(id); });
   if (!i) return;
@@ -600,7 +613,7 @@ function renderDetail() {
     <div class="section">
       <div class="section-title">處理紀錄（${_replies.length} 則）</div>
       <div class="reply-list">
-        ${_replies.length?_replies.map((r,rx)=>`<div class="reply-card" style="position:relative"><div class="reply-date">${r.date||''}</div><div class="reply-text">${r.text||''}</div>${isAdmin?`<button onclick="deleteReply('${i.id}',${rx})" style="position:absolute;top:6px;right:8px;background:none;border:none;color:#ccc;font-size:16px;cursor:pointer" title="刪除">🗑</button>`:''}</div>`).join(''):'<div class="empty-msg" style="padding:12px">尚無處理紀錄</div>'}
+        ${_replies.length?_replies.map((r,rx)=>`<div class="reply-card" style="position:relative"><div class="reply-date">${r.date||''}</div><div id="reply-text-${i.id}-${rx}" class="reply-text">${r.text||''}</div>${isAdmin?`<div style="position:absolute;top:6px;right:8px;display:flex;gap:4px"><button onclick="editReply('${i.id}',${rx})" style="background:none;border:none;color:#aaa;font-size:13px;cursor:pointer" title="編輯">✏️</button><button onclick="deleteReply('${i.id}',${rx})" style="background:none;border:none;color:#ccc;font-size:13px;cursor:pointer" title="刪除">🗑</button></div>`:''}</div>`).join(''):'<div class="empty-msg" style="padding:12px">尚無處理紀錄</div>'}
       </div>
     </div>`;
   const adminHTML = isAdmin ? `
