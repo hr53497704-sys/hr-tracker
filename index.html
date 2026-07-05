@@ -462,6 +462,48 @@ function deleteIssue(id) {
   showList();
 }
 
+
+function uploadPhotos(id, input) {
+  var i = issues.find(function(x) { return String(x.id) === String(id); });
+  if (!i) return;
+  if (!i.photos) i.photos = [];
+  Array.from(input.files).forEach(function(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      i.photos.push(e.target.result);
+      renderDetail();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function deletePhoto(id, idx) {
+  var i = issues.find(function(x) { return String(x.id) === String(id); });
+  if (!i || !i.photos) return;
+  if (!confirm('確定要刪除這張照片嗎？')) return;
+  i.photos.splice(idx, 1);
+  renderDetail();
+}
+
+function viewPhoto(src) {
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:999;display:flex;align-items:center;justify-content:center;cursor:pointer';
+  ov.onclick = function() { ov.remove(); };
+  var img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:95vw;max-height:95vh;object-fit:contain;border-radius:8px';
+  ov.appendChild(img);
+  document.body.appendChild(ov);
+}
+
+function deleteReply(id, idx) {
+  var i = issues.find(function(x) { return String(x.id) === String(id); });
+  if (!i) return;
+  if (!confirm('確定要刪除這筆回覆紀錄嗎？')) return;
+  i.replies.splice(idx, 1);
+  renderDetail();
+}
+
 function switchTab(t) {
   filterTab = t;
   document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['all','open','progress','done'][i]===t));
@@ -558,7 +600,7 @@ function renderDetail() {
     <div class="section">
       <div class="section-title">處理紀錄（${_replies.length} 則）</div>
       <div class="reply-list">
-        ${_replies.length?_replies.map(r=>`<div class="reply-card"><div class="reply-date">${r.date||''}</div><div class="reply-text">${r.text||''}</div></div>`).join(''):'<div class="empty-msg" style="padding:12px">尚無處理紀錄</div>'}
+        ${_replies.length?_replies.map((r,rx)=>`<div class="reply-card" style="position:relative"><div class="reply-date">${r.date||''}</div><div class="reply-text">${r.text||''}</div>${isAdmin?`<button onclick="deleteReply('${i.id}',${rx})" style="position:absolute;top:6px;right:8px;background:none;border:none;color:#ccc;font-size:16px;cursor:pointer" title="刪除">🗑</button>`:''}</div>`).join(''):'<div class="empty-msg" style="padding:12px">尚無處理紀錄</div>'}
       </div>
     </div>`;
   const adminHTML = isAdmin ? `
