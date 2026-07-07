@@ -120,16 +120,10 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <div class="topbar-company">鴻睿自動化股份有限公司</div>
       <div class="topbar-title">客戶問題追蹤系統</div>
     </div>
-    <button class="save-btn" onclick="requireAdmin('save')" id="saveBtn">☁ 儲存</button>
+    <button class="save-btn" onclick="saveToSheet()" id="saveBtn">☁ 儲存</button>
     <button class="save-btn" onclick="exportCSV()" style="background:rgba(255,255,255,0.15);margin-left:4px">📥 匯出</button>
-
   </div>
   <div class="sync-bar">
-    <span id="logoutArea" style="display:none">
-      <span style="color:#3B6D11;font-weight:600">🔓 生管模式</span>
-      <span onclick="doLogout()" style="margin-left:8px;color:#993C1D;cursor:pointer;text-decoration:underline">登出</span>
-      <span style="margin:0 6px;color:#ccc">|</span>
-    </span>
     <span class="dot dot-sync" id="syncDot"></span>
     <span id="syncText">連線中...</span>
   </div>
@@ -295,27 +289,12 @@ function showPage(id) {
 function showList() { showPage('listPage'); renderList(); }
 function showDetail() { showPage('detailPage'); renderDetail(); }
 
-// 更新登入狀態顯示
-function updateLoginBtn() {
-  const area = document.getElementById('logoutArea');
-  if (area) area.style.display = isAdmin ? 'inline' : 'none';
-}
-
-// 登出
-function doLogout() {
-  if (confirm('確定要登出生管模式？')) {
-    isAdmin = false;
-    updateLoginBtn();
-    showList();
-  }
-}
-
-// 需要管理員權限才能執行的動作
-function requireAdmin(action) {
+// FAB 點擊 - 直接跳到驗證頁或新增頁
+function clickFab() {
   if (isAdmin) {
-    runAdminAction(action);
+    showPage('addPage');
   } else {
-    pinNextAction = action;
+    pinNextAction = 'add';
     document.getElementById('pinInput').value = '';
     document.getElementById('pinErr').textContent = '';
     showPage('pinPage');
@@ -323,27 +302,12 @@ function requireAdmin(action) {
   }
 }
 
-function runAdminAction(action) {
-  updateLoginBtn();
-  if (action === 'save') { showList(); saveToSheet(); }
-  else if (action === 'add') { showPage('addPage'); }
-  else if (action === 'edit') { loadEditForm(); showPage('editPage'); }
-  else if (action === 'loginOnly') {
-    // 登入後停在列表頁，重新渲染
-    showList();
-  }
-}
-
-// FAB 點擊 - 直接跳到驗證頁或新增頁
-function clickFab() {
-  requireAdmin('add');
-}
-
 function confirmPin() {
   const v = document.getElementById('pinInput').value;
   if (v === PIN) {
     isAdmin = true;
-    runAdminAction(pinNextAction);
+    if (pinNextAction === 'add') { showPage('addPage'); }
+    else if (pinNextAction === 'edit') { loadEditForm(); showPage('editPage'); }
     pinNextAction = '';
   } else {
     document.getElementById('pinErr').textContent = '密碼錯誤，請重試';
@@ -398,17 +362,8 @@ async function saveToSheet() {
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    const jsonStr = JSON.stringify(issues);
-    const CHUNK = 8000;
-    const total = Math.ceil(jsonStr.length / CHUNK);
-    for (let i = 0; i < total; i++) {
-      const chunk = jsonStr.slice(i * CHUNK, (i + 1) * CHUNK);
-      const url = SCRIPT_URL + '?action=saveChunk&idx=' + i + '&total=' + total + '&data=' + encodeURIComponent(chunk);
-      await fetch(url, { method: 'GET', mode: 'no-cors' });
-      await new Promise(r => setTimeout(r, 400));
-    }
-    const mergeUrl = SCRIPT_URL + '?action=saveMerge&total=' + total;
-    await fetch(mergeUrl, { method: 'GET', mode: 'no-cors' });
+    const encoded = encodeURIComponent(JSON.stringify(issues));
+    await fetch(SCRIPT_URL + '?action=save&data=' + encoded, {mode:'no-cors'});
     await new Promise(r => setTimeout(r, 2000));
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
@@ -446,122 +401,30 @@ function exportCSV() {
     return true;
   });
   if (!data.length) { alert('目前沒有資料可以匯出！'); return; }
-  if (typeof ExcelJS === 'undefined') {
-    var s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
-    s.onload = function() { doExportXlsx(data); };
-    document.head.appendChild(s);
-  } else {
-    doExportXlsx(data);
-  }
-}
-
-async function doExportXlsx(data) {
-  var wb = new ExcelJS.Workbook();
-  wb.creator = '鴻睿自動化';
-  var ws = wb.addWorksheet('問題清單');
-
-  // ── 第1列：公司標題 ──
-  ws.mergeCells('A1:J1');
-  var titleCell = ws.getCell('A1');
-  titleCell.value = '鴻睿自動化股份有限公司　客戶問題追蹤清單';
-  titleCell.font = { name: '微軟正黑體', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
-  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2D5A8C' } };
-  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-  ws.getRow(1).height = 30;
-
-  // ── 第2列：匯出日期 ──
-  ws.mergeCells('A2:J2');
-  var dateCell = ws.getCell('A2');
-  dateCell.value = '匯出日期：' + new Date().toLocaleDateString('zh-TW') + '　共 ' + data.length + ' 筆';
-  dateCell.font = { name: '微軟正黑體', size: 10, color: { argb: 'FF555555' } };
-  dateCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF4FB' } };
-  dateCell.alignment = { horizontal: 'right', vertical: 'middle' };
-  ws.getRow(2).height = 18;
-
-  // ── 第3列：欄位標題 ──
-  var headers = ['工令','客戶','標題','建立日期','部門','負責人','說明','預定完成日','回覆紀錄','實際完成日'];
-  var hRow = ws.addRow(headers);
-  hRow.height = 22;
-  hRow.eachCell(function(cell) {
-    cell.font = { name: '微軟正黑體', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2D5A8C' } };
-    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-    cell.border = {
-      top: { style: 'medium', color: { argb: 'FF2D5A8C' } },
-      bottom: { style: 'medium', color: { argb: 'FF2D5A8C' } },
-      left: { style: 'thin', color: { argb: 'FF7AAFD4' } },
-      right: { style: 'thin', color: { argb: 'FF7AAFD4' } }
-    };
-  });
-
-  // ── 欄寬 ──
-  var colWidths = [11, 13, 36, 13, 10, 10, 50, 13, 38, 13];
-  colWidths.forEach(function(w, i) { ws.getColumn(i+1).width = w; });
-
-  // ── 狀態顏色對應 ──
-  var statusMap = { open: '待處理', progress: '處理中', done: '已完成', wait: '等待中' };
-  var statusColor = { open: 'FFFAECE7', progress: 'FFFAEEDA', done: 'FFEAF3DE', wait: 'FFEEF4FB' };
-
-  // ── 資料列 ──
-  data.forEach(function(i, idx) {
-    var tds = Array.isArray(i.targetDates) ? i.targetDates.filter(function(d){return d&&d.date;}) : [];
-    var dueStr = tds.map(function(d) {
+  var SM2 = {open:'待處理',progress:'處理中',done:'已完成',wait:'等待中'};
+  var rows = [['工令','客戶','問題標題','狀態','急件','建立日期','部門','負責人員','問題說明','預定完成日','實際完成日']];
+  data.forEach(function(i) {
+    var dates = (i.targetDates||[]).map(function(d) {
       return String(d.date).slice(0,10) + (d.done ? ' (延期)' : '');
-    }).join('\n');
-    var replies = Array.isArray(i.replies) ? i.replies.filter(function(r){return r&&r.text;}) : [];
-    var replyStr = replies.map(function(r) {
-      return '[' + (r.date||'') + '] ' + (r.text||'');
-    }).join('\n');
-
-    var row = ws.addRow([
-      i.wo||'',
-      i.client||'',
-      i.title||'',
-      String(i.date||'').slice(0,10),
-      i.dept||'',
-      i.assignee||'',
-      i.desc||'',
-      dueStr,
-      replyStr,
-      i.actualDate||''
-    ]);
-
-    var bgColor = idx % 2 === 0 ? 'FFFFFFFF' : 'FFEEF4FB';
-    row.height = Math.max(18, (replies.length * 15) + 10, (tds.length * 15) + 10);
-
-    row.eachCell(function(cell, colNum) {
-      cell.font = { name: '微軟正黑體', size: 10 };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
-      cell.alignment = {
-        horizontal: (colNum === 7 || colNum === 9) ? 'left' : 'center',
-        vertical: 'top',
-        wrapText: true
-      };
-      cell.border = {
-        top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-        bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-        left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-        right: { style: 'thin', color: { argb: 'FFD0D0D0' } }
-      };
-    });
-
-    // 急件標紅
-    if (i.urgent) {
-      ws.getCell(row.number, 3).font = { name: '微軟正黑體', size: 10, bold: true, color: { argb: 'FF993C1D' } };
-    }
+    }).join(', ');
+    rows.push([i.wo||'', i.client||'', i.title||'', SM2[i.status]||'',
+      i.urgent ? '是' : '否', String(i.date||'').slice(0,10),
+      i.dept||'', i.assignee||'', i.desc||'', dates, i.actualDate||'']);
   });
-
-  // ── 凍結前3列 ──
-  ws.views = [{ state: 'frozen', ySplit: 3 }];
-
-  // ── 下載 ──
-  var buf = await wb.xlsx.writeBuffer();
-  var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  var BOM = '\uFEFF';
+  var csvRows = rows.map(function(r) {
+    return r.map(function(c) {
+      var s = String(c||'').split('"').join('""');
+      if (s.indexOf(',') >= 0 || s.indexOf('"') >= 0) { s = '"' + s + '"'; }
+      return s;
+    }).join(',');
+  });
+  var csv = BOM + csvRows.join('\r\n');
+  var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  a.download = '鴻睿問題清單_' + new Date().toISOString().slice(0,10) + '.xlsx';
+  a.download = '鴻睿問題清單_' + new Date().toISOString().slice(0,10) + '.csv';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -842,9 +705,9 @@ function renderDetail() {
     <div class="desc-box">${i.desc||'（無說明）'}</div>
     ${dueHTML}${photosHTML}${repliesHTML}
     <div style="margin-top:12px;padding:12px;background:#f8f9fa;border-radius:8px;border:1px solid #e0e0e0">
-      <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:8px">新增回覆紀錄</div>
-      ${isAdmin ? `<textarea class="form-textarea" id="replyInput" placeholder="輸入處理進度或回覆內容…" style="width:100%;margin-top:4px"></textarea>
-      <button class="blue-btn" style="width:100%;margin-top:8px;padding:12px" onclick="addReply()">✉ 送出回覆</button>` : `<div class="lock-msg">🔒 需要生管密碼才能新增回覆</div>`}
+      <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:8px">新增回覆紀錄（所有人可填）</div>
+      <textarea class="form-textarea" id="replyInput" placeholder="輸入處理進度或回覆內容…" style="width:100%;margin-top:4px"></textarea>
+      <button class="blue-btn" style="width:100%;margin-top:8px;padding:12px" onclick="addReply()">✉ 送出回覆</button>
     </div>
     ${adminHTML}`;
 }
@@ -874,7 +737,8 @@ function addReply() {
 
 // 編輯
 function goEdit() {
-  requireAdmin('edit');
+  if (!isAdmin) { pinNextAction='edit'; document.getElementById('pinInput').value=''; document.getElementById('pinErr').textContent=''; showPage('pinPage'); return; }
+  loadEditForm(); showPage('editPage');
 }
 function loadEditForm() {
   const i=issues.find(x=>x.id===currentId);
