@@ -120,8 +120,9 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <div class="topbar-company">鴻睿自動化股份有限公司</div>
       <div class="topbar-title">客戶問題追蹤系統</div>
     </div>
-    <button class="save-btn" onclick="saveToSheet()" id="saveBtn">☁ 儲存</button>
+    <button class="save-btn" onclick="requireAdmin('save')" id="saveBtn">☁ 儲存</button>
     <button class="save-btn" onclick="exportCSV()" style="background:rgba(255,255,255,0.15);margin-left:4px">📥 匯出</button>
+    <button class="save-btn" id="loginBtn" onclick="toggleLogin()" style="background:rgba(255,255,255,0.15);margin-left:4px">🔒 登入</button>
   </div>
   <div class="sync-bar">
     <span class="dot dot-sync" id="syncDot"></span>
@@ -289,12 +290,35 @@ function showPage(id) {
 function showList() { showPage('listPage'); renderList(); }
 function showDetail() { showPage('detailPage'); renderDetail(); }
 
-// FAB 點擊 - 直接跳到驗證頁或新增頁
-function clickFab() {
+// 更新登入按鈕顯示
+function updateLoginBtn() {
+  const btn = document.getElementById('loginBtn');
+  if (!btn) return;
   if (isAdmin) {
-    showPage('addPage');
+    btn.textContent = '🔓 登出';
+    btn.style.background = 'rgba(255,200,0,0.25)';
+    btn.style.borderColor = 'rgba(255,200,0,0.6)';
   } else {
-    pinNextAction = 'add';
+    btn.textContent = '🔒 登入';
+    btn.style.background = 'rgba(255,255,255,0.15)';
+    btn.style.borderColor = 'rgba(255,255,255,0.4)';
+  }
+}
+
+// 切換登入/登出
+function toggleLogin() {
+  if (isAdmin) {
+    if (confirm('確定要登出生管模式？')) {
+      isAdmin = false;
+      updateLoginBtn();
+      renderList();
+      // 如果在詳細頁，重新渲染
+      if (document.getElementById('detailPage').classList.contains('active')) {
+        renderDetail();
+      }
+    }
+  } else {
+    pinNextAction = 'loginOnly';
     document.getElementById('pinInput').value = '';
     document.getElementById('pinErr').textContent = '';
     showPage('pinPage');
@@ -302,12 +326,40 @@ function clickFab() {
   }
 }
 
+// 需要管理員權限才能執行的動作
+function requireAdmin(action) {
+  if (isAdmin) {
+    runAdminAction(action);
+  } else {
+    pinNextAction = action;
+    document.getElementById('pinInput').value = '';
+    document.getElementById('pinErr').textContent = '';
+    showPage('pinPage');
+    setTimeout(() => document.getElementById('pinInput').focus(), 300);
+  }
+}
+
+function runAdminAction(action) {
+  updateLoginBtn();
+  if (action === 'save') { showList(); saveToSheet(); }
+  else if (action === 'add') { showPage('addPage'); }
+  else if (action === 'edit') { loadEditForm(); showPage('editPage'); }
+  else if (action === 'loginOnly') {
+    // 登入後停在列表頁，重新渲染
+    showList();
+  }
+}
+
+// FAB 點擊 - 直接跳到驗證頁或新增頁
+function clickFab() {
+  requireAdmin('add');
+}
+
 function confirmPin() {
   const v = document.getElementById('pinInput').value;
   if (v === PIN) {
     isAdmin = true;
-    if (pinNextAction === 'add') { showPage('addPage'); }
-    else if (pinNextAction === 'edit') { loadEditForm(); showPage('editPage'); }
+    runAdminAction(pinNextAction);
     pinNextAction = '';
   } else {
     document.getElementById('pinErr').textContent = '密碼錯誤，請重試';
@@ -705,9 +757,9 @@ function renderDetail() {
     <div class="desc-box">${i.desc||'（無說明）'}</div>
     ${dueHTML}${photosHTML}${repliesHTML}
     <div style="margin-top:12px;padding:12px;background:#f8f9fa;border-radius:8px;border:1px solid #e0e0e0">
-      <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:8px">新增回覆紀錄（所有人可填）</div>
-      <textarea class="form-textarea" id="replyInput" placeholder="輸入處理進度或回覆內容…" style="width:100%;margin-top:4px"></textarea>
-      <button class="blue-btn" style="width:100%;margin-top:8px;padding:12px" onclick="addReply()">✉ 送出回覆</button>
+      <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:8px">新增回覆紀錄</div>
+      ${isAdmin ? `<textarea class="form-textarea" id="replyInput" placeholder="輸入處理進度或回覆內容…" style="width:100%;margin-top:4px"></textarea>
+      <button class="blue-btn" style="width:100%;margin-top:8px;padding:12px" onclick="addReply()">✉ 送出回覆</button>` : `<div class="lock-msg">🔒 需要生管密碼才能新增回覆</div>`}
     </div>
     ${adminHTML}`;
 }
@@ -737,8 +789,7 @@ function addReply() {
 
 // 編輯
 function goEdit() {
-  if (!isAdmin) { pinNextAction='edit'; document.getElementById('pinInput').value=''; document.getElementById('pinErr').textContent=''; showPage('pinPage'); return; }
-  loadEditForm(); showPage('editPage');
+  requireAdmin('edit');
 }
 function loadEditForm() {
   const i=issues.find(x=>x.id===currentId);
