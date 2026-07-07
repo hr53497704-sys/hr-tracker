@@ -398,16 +398,18 @@ async function saveToSheet() {
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    // 用 POST 方式送出，資料量大也不會被截斷
-    const formData = new FormData();
-    formData.append('action', 'save');
-    formData.append('data', JSON.stringify(issues));
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: formData
-    });
-    await new Promise(r => setTimeout(r, 2500));
+    const jsonStr = JSON.stringify(issues);
+    const CHUNK = 8000;
+    const total = Math.ceil(jsonStr.length / CHUNK);
+    for (let i = 0; i < total; i++) {
+      const chunk = jsonStr.slice(i * CHUNK, (i + 1) * CHUNK);
+      const url = SCRIPT_URL + '?action=saveChunk&idx=' + i + '&total=' + total + '&data=' + encodeURIComponent(chunk);
+      await fetch(url, { method: 'GET', mode: 'no-cors' });
+      await new Promise(r => setTimeout(r, 400));
+    }
+    const mergeUrl = SCRIPT_URL + '?action=saveMerge&total=' + total;
+    await fetch(mergeUrl, { method: 'GET', mode: 'no-cors' });
+    await new Promise(r => setTimeout(r, 2000));
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
@@ -444,11 +446,9 @@ function exportCSV() {
     return true;
   });
   if (!data.length) { alert('目前沒有資料可以匯出！'); return; }
-
-  // 載入 SheetJS 匯出真正的 xlsx
-  if (typeof XLSX === 'undefined') {
+  if (typeof ExcelJS === 'undefined') {
     var s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
     s.onload = function() { doExportXlsx(data); };
     document.head.appendChild(s);
   } else {
@@ -456,24 +456,65 @@ function exportCSV() {
   }
 }
 
-function doExportXlsx(data) {
+async function doExportXlsx(data) {
+  var wb = new ExcelJS.Workbook();
+  wb.creator = '鴻睿自動化';
+  var ws = wb.addWorksheet('問題清單');
+
+  // ── 第1列：公司標題 ──
+  ws.mergeCells('A1:J1');
+  var titleCell = ws.getCell('A1');
+  titleCell.value = '鴻睿自動化股份有限公司　客戶問題追蹤清單';
+  titleCell.font = { name: '微軟正黑體', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2D5A8C' } };
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  ws.getRow(1).height = 30;
+
+  // ── 第2列：匯出日期 ──
+  ws.mergeCells('A2:J2');
+  var dateCell = ws.getCell('A2');
+  dateCell.value = '匯出日期：' + new Date().toLocaleDateString('zh-TW') + '　共 ' + data.length + ' 筆';
+  dateCell.font = { name: '微軟正黑體', size: 10, color: { argb: 'FF555555' } };
+  dateCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF4FB' } };
+  dateCell.alignment = { horizontal: 'right', vertical: 'middle' };
+  ws.getRow(2).height = 18;
+
+  // ── 第3列：欄位標題 ──
   var headers = ['工令','客戶','標題','建立日期','部門','負責人','說明','預定完成日','回覆紀錄','實際完成日'];
-  var rows = [headers];
+  var hRow = ws.addRow(headers);
+  hRow.height = 22;
+  hRow.eachCell(function(cell) {
+    cell.font = { name: '微軟正黑體', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2D5A8C' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    cell.border = {
+      top: { style: 'medium', color: { argb: 'FF2D5A8C' } },
+      bottom: { style: 'medium', color: { argb: 'FF2D5A8C' } },
+      left: { style: 'thin', color: { argb: 'FF7AAFD4' } },
+      right: { style: 'thin', color: { argb: 'FF7AAFD4' } }
+    };
+  });
 
-  data.forEach(function(i) {
-    // 預定完成日：取最後一筆（有延期標示）
+  // ── 欄寬 ──
+  var colWidths = [11, 13, 36, 13, 10, 10, 50, 13, 38, 13];
+  colWidths.forEach(function(w, i) { ws.getColumn(i+1).width = w; });
+
+  // ── 狀態顏色對應 ──
+  var statusMap = { open: '待處理', progress: '處理中', done: '已完成', wait: '等待中' };
+  var statusColor = { open: 'FFFAECE7', progress: 'FFFAEEDA', done: 'FFEAF3DE', wait: 'FFEEF4FB' };
+
+  // ── 資料列 ──
+  data.forEach(function(i, idx) {
     var tds = Array.isArray(i.targetDates) ? i.targetDates.filter(function(d){return d&&d.date;}) : [];
-    var dueStr = tds.map(function(d, idx) {
-      return String(d.date).slice(0,10) + (d.done ? '(延期)' : '');
+    var dueStr = tds.map(function(d) {
+      return String(d.date).slice(0,10) + (d.done ? ' (延期)' : '');
     }).join('\n');
-
-    // 回覆紀錄：全部合併
     var replies = Array.isArray(i.replies) ? i.replies.filter(function(r){return r&&r.text;}) : [];
     var replyStr = replies.map(function(r) {
-      return (r.date||'') + ' ' + (r.text||'');
+      return '[' + (r.date||'') + '] ' + (r.text||'');
     }).join('\n');
 
-    rows.push([
+    var row = ws.addRow([
       i.wo||'',
       i.client||'',
       i.title||'',
@@ -485,56 +526,46 @@ function doExportXlsx(data) {
       replyStr,
       i.actualDate||''
     ]);
+
+    var bgColor = idx % 2 === 0 ? 'FFFFFFFF' : 'FFEEF4FB';
+    row.height = Math.max(18, (replies.length * 15) + 10, (tds.length * 15) + 10);
+
+    row.eachCell(function(cell, colNum) {
+      cell.font = { name: '微軟正黑體', size: 10 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+      cell.alignment = {
+        horizontal: (colNum === 7 || colNum === 9) ? 'left' : 'center',
+        vertical: 'top',
+        wrapText: true
+      };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+        bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+        left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+        right: { style: 'thin', color: { argb: 'FFD0D0D0' } }
+      };
+    });
+
+    // 急件標紅
+    if (i.urgent) {
+      ws.getCell(row.number, 3).font = { name: '微軟正黑體', size: 10, bold: true, color: { argb: 'FF993C1D' } };
+    }
   });
 
-  var wb = XLSX.utils.book_new();
-  var ws = XLSX.utils.aoa_to_sheet(rows);
+  // ── 凍結前3列 ──
+  ws.views = [{ state: 'frozen', ySplit: 3 }];
 
-  // 欄寬（對應範例）
-  ws['!cols'] = [
-    {wch:11},  // 工令
-    {wch:13},  // 客戶
-    {wch:36},  // 標題
-    {wch:13},  // 建立日期
-    {wch:10},  // 部門
-    {wch:10},  // 負責人
-    {wch:50},  // 說明
-    {wch:13},  // 預定完成日
-    {wch:38},  // 回覆紀錄
-    {wch:13},  // 實際完成日
-  ];
-
-  // 全欄置中、自動換行、置中垂直
-  var range = XLSX.utils.decode_range(ws['!ref']);
-  for (var R = range.s.r; R <= range.e.r; R++) {
-    for (var C = range.s.c; C <= range.e.c; C++) {
-      var addr = XLSX.utils.encode_cell({r:R, c:C});
-      if (!ws[addr]) continue;
-      ws[addr].s = {
-        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-        font: { name: '新細明體', sz: 11 },
-        border: {
-          top:    {style:'medium', color:{rgb:'000000'}},
-          bottom: {style:'medium', color:{rgb:'000000'}},
-          left:   {style:'medium', color:{rgb:'000000'}},
-          right:  {style:'medium', color:{rgb:'000000'}}
-        }
-      };
-      // 說明、回覆紀錄欄位靠左
-      if (C === 6 || C === 8) {
-        ws[addr].s.alignment = { horizontal: 'left', vertical: 'center', wrapText: true };
-      }
-      // 標題列加粗底色
-      if (R === 0) {
-        ws[addr].s.font = { name: '新細明體', sz: 11, bold: true };
-        ws[addr].s.fill = { fgColor: { rgb: 'D9E8F7' } };
-      }
-    }
-  }
-
-  XLSX.utils.book_append_sheet(wb, ws, '問題清單');
-  var today = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, '鴻睿問題清單_' + today + '.xlsx');
+  // ── 下載 ──
+  var buf = await wb.xlsx.writeBuffer();
+  var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = '鴻睿問題清單_' + new Date().toISOString().slice(0,10) + '.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 function filterByClient(c) { filterClient = c; renderList(); }
 function updateClientFilter() {
