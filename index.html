@@ -572,6 +572,30 @@ function renderList() {
     if (q && !`${i.wo}${i.client}${i.title}${i.desc}`.toLowerCase().includes(q)) return false;
     return true;
   });
+  // 排序：逾時 > 即將到期 > 其他（依預定完成日）
+  const sortToday = new Date().toISOString().slice(0,10);
+  data.sort(function(a, b) {
+    function getScore(i) {
+      var tds = Array.isArray(i.targetDates) ? i.targetDates.filter(function(d){return d&&d.date;}) : [];
+      var last = tds[tds.length-1];
+      if (!last || last.done || i.status === 'done') return 3;
+      var fd = String(last.date).slice(0,10);
+      if (fd < sortToday) return 0; // 逾時
+      var diff = (new Date(fd) - new Date()) / 86400000;
+      if (diff <= 3) return 1; // 即將到期
+      return 2; // 一般
+    }
+    var sa = getScore(a), sb = getScore(b);
+    if (sa !== sb) return sa - sb;
+    // 同等級依預定完成日排序
+    var tda = Array.isArray(a.targetDates) ? a.targetDates.filter(function(d){return d&&d.date;}) : [];
+    var tdb = Array.isArray(b.targetDates) ? b.targetDates.filter(function(d){return d&&d.date;}) : [];
+    var la = tda[tda.length-1], lb = tdb[tdb.length-1];
+    if (la && lb) return String(la.date).slice(0,10).localeCompare(String(lb.date).slice(0,10));
+    if (la) return -1;
+    if (lb) return 1;
+    return 0;
+  });
   const list = document.getElementById('issueList');
   if (!data.length) { list.innerHTML='<div class="empty-msg">沒有符合的記錄</div>'; return; }
   list.innerHTML = data.map(i => {
