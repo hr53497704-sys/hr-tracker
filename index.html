@@ -398,8 +398,12 @@ async function saveToSheet() {
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    const encoded = encodeURIComponent(JSON.stringify(issues));
-    await fetch(SCRIPT_URL + '?action=save&data=' + encoded, {mode:'no-cors'});
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'text/plain'},
+      body: JSON.stringify({action: 'save', data: issues})
+    });
     await new Promise(r => setTimeout(r, 2000));
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
