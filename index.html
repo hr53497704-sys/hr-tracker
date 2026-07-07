@@ -122,9 +122,14 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
     </div>
     <button class="save-btn" onclick="requireAdmin('save')" id="saveBtn">☁ 儲存</button>
     <button class="save-btn" onclick="exportCSV()" style="background:rgba(255,255,255,0.15);margin-left:4px">📥 匯出</button>
-    <button class="save-btn" id="loginBtn" onclick="toggleLogin()" style="background:rgba(255,255,255,0.15);margin-left:4px">🔒 登入</button>
+
   </div>
   <div class="sync-bar">
+    <span id="logoutArea" style="display:none">
+      <span style="color:#3B6D11;font-weight:600">🔓 生管模式</span>
+      <span onclick="doLogout()" style="margin-left:8px;color:#993C1D;cursor:pointer;text-decoration:underline">登出</span>
+      <span style="margin:0 6px;color:#ccc">|</span>
+    </span>
     <span class="dot dot-sync" id="syncDot"></span>
     <span id="syncText">連線中...</span>
   </div>
@@ -290,39 +295,18 @@ function showPage(id) {
 function showList() { showPage('listPage'); renderList(); }
 function showDetail() { showPage('detailPage'); renderDetail(); }
 
-// 更新登入按鈕顯示
+// 更新登入狀態顯示
 function updateLoginBtn() {
-  const btn = document.getElementById('loginBtn');
-  if (!btn) return;
-  if (isAdmin) {
-    btn.textContent = '🔓 登出';
-    btn.style.background = 'rgba(255,200,0,0.25)';
-    btn.style.borderColor = 'rgba(255,200,0,0.6)';
-  } else {
-    btn.textContent = '🔒 登入';
-    btn.style.background = 'rgba(255,255,255,0.15)';
-    btn.style.borderColor = 'rgba(255,255,255,0.4)';
-  }
+  const area = document.getElementById('logoutArea');
+  if (area) area.style.display = isAdmin ? 'inline' : 'none';
 }
 
-// 切換登入/登出
-function toggleLogin() {
-  if (isAdmin) {
-    if (confirm('確定要登出生管模式？')) {
-      isAdmin = false;
-      updateLoginBtn();
-      renderList();
-      // 如果在詳細頁，重新渲染
-      if (document.getElementById('detailPage').classList.contains('active')) {
-        renderDetail();
-      }
-    }
-  } else {
-    pinNextAction = 'loginOnly';
-    document.getElementById('pinInput').value = '';
-    document.getElementById('pinErr').textContent = '';
-    showPage('pinPage');
-    setTimeout(() => document.getElementById('pinInput').focus(), 300);
+// 登出
+function doLogout() {
+  if (confirm('確定要登出生管模式？')) {
+    isAdmin = false;
+    updateLoginBtn();
+    showList();
   }
 }
 
