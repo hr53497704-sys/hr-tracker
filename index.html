@@ -362,8 +362,15 @@ async function saveToSheet() {
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    const encoded = encodeURIComponent(JSON.stringify(issues));
-    await fetch(SCRIPT_URL + '?action=save&data=' + encoded, {mode:'no-cors'});
+    // 分批傳送，每批 5 筆，避免 URL 太長
+    const CHUNK_SIZE = 5;
+    const total = Math.ceil(issues.length / CHUNK_SIZE);
+    for (let i = 0; i < total; i++) {
+      const chunk = issues.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      const encoded = encodeURIComponent(JSON.stringify(chunk));
+      await fetch(SCRIPT_URL + '?action=save_chunk&chunk=' + encoded + '&index=' + i + '&total=' + total, {mode:'no-cors'});
+      await new Promise(r => setTimeout(r, 500)); // 每批間隔 0.5 秒
+    }
     await new Promise(r => setTimeout(r, 2000));
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
