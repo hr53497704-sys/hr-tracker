@@ -121,7 +121,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <div class="topbar-title">客戶問題追蹤系統</div>
     </div>
     <button class="save-btn" onclick="saveToSheet()" id="saveBtn">☁ 儲存</button>
-    <button class="save-btn" onclick="exportCSV()" style="background:rgba(255,255,255,0.15);margin-left:4px">📥 匯出</button>
+    <button class="save-btn" onclick="exportCSV()" style="background:rgba(255,255,255,0.15);margin-left:4px">📊 匯出Excel</button>
   </div>
   <div class="sync-bar">
     <span class="dot dot-sync" id="syncDot"></span>
@@ -389,46 +389,91 @@ function filterByDept(dept) {
 }
 
 function exportCSV() {
-  var q = document.getElementById('searchInput').value.toLowerCase();
-  var data = issues.filter(function(i) {
-    if (filterTab === 'done') { if (i.status !== 'done') return false; }
-    else if (filterTab === 'all') { if (i.status === 'done') return false; }
-    else { if (i.status !== filterTab) return false; }
-    if (filterUrg && !i.urgent) return false;
-    if (filterDept && String(i.dept||'').trim() !== filterDept.trim()) return false;
-    if (filterClient && String(i.client||'').trim() !== filterClient.trim()) return false;
-    if (q && (i.wo+i.client+i.title+i.desc).toLowerCase().indexOf(q) < 0) return false;
-    return true;
-  });
-  if (!data.length) { alert('目前沒有資料可以匯出！'); return; }
-  var SM2 = {open:'待處理',progress:'處理中',done:'已完成',wait:'等待中'};
-  var rows = [['工令','客戶','問題標題','狀態','急件','建立日期','部門','負責人員','問題說明','預定完成日','實際完成日']];
-  data.forEach(function(i) {
-    var dates = (i.targetDates||[]).map(function(d) {
-      return String(d.date).slice(0,10) + (d.done ? ' (延期)' : '');
-    }).join(', ');
-    rows.push([i.wo||'', i.client||'', i.title||'', SM2[i.status]||'',
-      i.urgent ? '是' : '否', String(i.date||'').slice(0,10),
-      i.dept||'', i.assignee||'', i.desc||'', dates, i.actualDate||'']);
-  });
-  var BOM = '\uFEFF';
-  var csvRows = rows.map(function(r) {
-    return r.map(function(c) {
-      var s = String(c||'').split('"').join('""');
-      if (s.indexOf(',') >= 0 || s.indexOf('"') >= 0) { s = '"' + s + '"'; }
-      return s;
-    }).join(',');
-  });
-  var csv = BOM + csvRows.join('\r\n');
-  var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = '鴻睿問題清單_' + new Date().toISOString().slice(0,10) + '.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // 動態載入 SheetJS
+  function doExport() {
+    var XLSX = window.XLSX;
+    var q = document.getElementById('searchInput').value.toLowerCase();
+    var data = issues.filter(function(i) {
+      if (filterTab === 'done') { if (i.status !== 'done') return false; }
+      else if (filterTab === 'all') { if (i.status === 'done') return false; }
+      else { if (i.status !== filterTab) return false; }
+      if (filterUrg && !i.urgent) return false;
+      if (filterDept && String(i.dept||'').trim() !== filterDept.trim()) return false;
+      if (filterClient && String(i.client||'').trim() !== filterClient.trim()) return false;
+      if (q && (i.wo+i.client+i.title+i.desc).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+    if (!data.length) { alert('目前沒有資料可以匯出！'); return; }
+    var SM2 = {open:'待處理',progress:'處理中',done:'已完成',wait:'等待中'};
+
+    var wb = XLSX.utils.book_new();
+    var wsData = [];
+
+    // 第1列：公司名稱標題
+    wsData.push(['鴻睿自動化股份有限公司 - 客戶問題追蹤清單']);
+    // 第2列：匯出日期
+    wsData.push(['匯出日期：' + new Date().toLocaleDateString('zh-TW')]);
+    // 第3列：空行
+    wsData.push([]);
+    // 第4列：欄位標題
+    wsData.push(['工令號碼','客戶名稱','問題標題','狀態','急件','建立日期','部門','負責人員','問題說明','預定完成日','實際完成日','回覆紀錄']);
+
+    data.forEach(function(i) {
+      var dates = (i.targetDates||[]).map(function(d) {
+        return String(d.date).slice(0,10) + (d.done ? '(延期)' : '');
+      }).join(' → ');
+      var replies = (i.replies||[]).map(function(r) {
+        return '[' + (r.date||'') + '] ' + (r.text||'');
+      }).join('\n');
+      wsData.push([
+        i.wo||'',
+        i.client||'',
+        i.title||'',
+        SM2[i.status]||'',
+        i.urgent ? '🔴 急件' : '',
+        String(i.date||'').slice(0,10),
+        i.dept||'',
+        i.assignee||'',
+        i.desc||'',
+        dates,
+        i.actualDate||'',
+        replies
+      ]);
+    });
+
+    var ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // 合併第1、2列標題跨欄
+    ws['!merges'] = [
+      {s:{r:0,c:0}, e:{r:0,c:11}},
+      {s:{r:1,c:0}, e:{r:1,c:11}}
+    ];
+
+    // 欄寬設定
+    ws['!cols'] = [
+      {wch:10},{wch:14},{wch:22},{wch:8},{wch:7},{wch:11},
+      {wch:8},{wch:10},{wch:30},{wch:22},{wch:11},{wch:35}
+    ];
+
+    // 列高（標題列高一點）
+    ws['!rows'] = [{hpt:28},{hpt:18},{hpt:10},{hpt:22}];
+
+    XLSX.utils.book_append_sheet(wb, ws, '問題清單');
+
+    // 產生檔案下載
+    var fname = '鴻睿問題清單_' + new Date().toISOString().slice(0,10) + '.xlsx';
+    XLSX.writeFile(wb, fname);
+  }
+
+  if (window.XLSX) {
+    doExport();
+  } else {
+    var script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    script.onload = doExport;
+    script.onerror = function() { alert('無法載入匯出功能，請確認網路連線'); };
+    document.head.appendChild(script);
+  }
 }
 function filterByClient(c) { filterClient = c; renderList(); }
 function updateClientFilter() {
@@ -704,11 +749,6 @@ function renderDetail() {
     <div class="info-row"><span class="info-lbl">實際完成日</span><span class="info-val" style="color:${i.actualDate?'#3B6D11':'#bbb'}">${i.actualDate||'尚未完成'}</span></div>
     <div class="desc-box">${i.desc||'（無說明）'}</div>
     ${dueHTML}${photosHTML}${repliesHTML}
-    <div style="margin-top:12px;padding:12px;background:#f8f9fa;border-radius:8px;border:1px solid #e0e0e0">
-      <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:8px">新增回覆紀錄（所有人可填）</div>
-      <textarea class="form-textarea" id="replyInput" placeholder="輸入處理進度或回覆內容…" style="width:100%;margin-top:4px"></textarea>
-      <button class="blue-btn" style="width:100%;margin-top:8px;padding:12px" onclick="addReply()">✉ 送出回覆</button>
-    </div>
     ${adminHTML}`;
 }
 
