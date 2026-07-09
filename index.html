@@ -120,7 +120,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <div class="topbar-company">鴻睿自動化股份有限公司</div>
       <div class="topbar-title">客戶問題追蹤系統</div>
     </div>
-    <button class="save-btn" onclick="saveToSheet()" id="saveBtn">☁ 儲存</button>
+    <button class="save-btn" onclick="saveToSheet()" id="saveBtn" style="display:none">☁ 儲存</button>
     <button class="save-btn" onclick="exportCSV()" style="background:rgba(255,255,255,0.15);margin-left:4px">📊 匯出Excel</button>
   </div>
   <div class="sync-bar">
@@ -306,6 +306,7 @@ function confirmPin() {
   const v = document.getElementById('pinInput').value;
   if (v === PIN) {
     isAdmin = true;
+    document.getElementById('saveBtn').style.display = '';
     if (pinNextAction === 'add') { showPage('addPage'); }
     else if (pinNextAction === 'edit') { loadEditForm(); showPage('editPage'); }
     pinNextAction = '';
@@ -358,10 +359,6 @@ function defaultData() {
 }
 
 async function saveToSheet() {
-  if (!isAdmin) {
-    alert('🔒 需要輸入生管密碼才能儲存！\n請點右下角「+」按鈕登入。');
-    return;
-  }
   const btn = document.getElementById('saveBtn');
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
