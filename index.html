@@ -709,7 +709,7 @@ function renderList() {
     if (filterTab === 'done') {
       if (i.status !== 'done') return false;
     } else if (filterTab === 'all') {
-      if (i.status === 'done') return false;
+      if (i.status === 'done' && !q) return false;
     } else {
       if (i.status !== filterTab) return false;
     }
