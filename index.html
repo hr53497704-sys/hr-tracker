@@ -358,6 +358,10 @@ function defaultData() {
 }
 
 async function saveToSheet() {
+  if (!isAdmin) {
+    alert('🔒 需要輸入生管密碼才能儲存！\n請點右下角「+」按鈕登入。');
+    return;
+  }
   const btn = document.getElementById('saveBtn');
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
