@@ -315,7 +315,12 @@ function showPage(id) {
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
 }
-function showList() { showPage('listPage'); renderList(); }
+let listScrollPos = 0;
+function showList() {
+  showPage('listPage');
+  renderList();
+  setTimeout(() => window.scrollTo(0, listScrollPos), 50);
+}
 function showDetail() { showPage('detailPage'); renderDetail(); }
 
 // FAB 點擊 - 直接跳到驗證頁或新增頁
@@ -811,7 +816,7 @@ function renderList() {
 }
 
 // 詳細頁
-function openDetail(id) { currentId=id; showPage('detailPage'); renderDetail(); }
+function openDetail(id) { listScrollPos = window.scrollY; currentId=id; showPage('detailPage'); renderDetail(); }
 
 function renderDetail() {
   const i = issues.find(x=>x.id===currentId);
