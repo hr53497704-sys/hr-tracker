@@ -590,9 +590,10 @@ function saveActualDate(id) {
   const i = issues.find(x => String(x.id) === String(id));
   if (!i) return;
   const d = document.getElementById('actualDate').value;
-  if (!d) { alert('請選擇實際完成日'); return; }
+  if (!d) { alert('\u8acb\u9078\u64c7\u5be6\u969b\u5b8c\u6210\u65e5'); return; }
   i.actualDate = d;
   renderDetail();
+  alert('\u2705 \u5be6\u969b\u5b8c\u6210\u65e5\u5df2\u5132\u5b58\uff1a' + d + '\n\n\u8acb\u8a18\u5f97\u6309\u9802\u90e8\u300c\u2601 \u5132\u5b58\u300d\u540c\u6b65\u5230\u8a66\u7b97\u8868\uff01');
 }
 
 function setQuickDate(days) {
