@@ -100,6 +100,10 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
 .blue-btn{padding:10px 14px;background:#2D5A8C;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .photo-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .lock-msg{text-align:center;font-size:13px;color:#bbb;padding:14px;background:#f8f9fa;border-radius:8px;margin-top:12px}
+.dept-checks{display:flex;flex-wrap:wrap;gap:8px;padding:8px 0}
+.dept-check-item{display:flex;align-items:center;gap:5px;background:#f0f4f8;border:1px solid #ddd;border-radius:8px;padding:6px 10px;cursor:pointer}
+.dept-check-item input{width:16px;height:16px;accent-color:#2D5A8C;cursor:pointer}
+.dept-check-item label{font-size:13px;color:#333;cursor:pointer}
 .empty-msg{text-align:center;color:#bbb;font-size:13px;padding:40px 20px}
 /* PIN 輸入區 - 直接嵌在頁面 */
 .pin-section{background:#fff;border:2px solid #2D5A8C;border-radius:12px;padding:16px;margin:16px 12px}
@@ -185,10 +189,18 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <input class="form-input" id="f_title" placeholder="簡短描述問題" />
       <label class="form-label">問題說明</label>
       <textarea class="form-textarea" id="f_desc" placeholder="詳細說明…"></textarea>
-      <label class="form-label">部門</label>
-      <select class="form-select" id="f_dept">
-        <option>製造部</option><option>機工</option><option>膠工</option><option>電工</option><option>電控</option><option>設計</option><option>業務</option><option>採購</option><option>生管</option>
-      </select>
+      <label class="form-label">部門（可多選）</label>
+      <div class="dept-checks" id="f_dept_checks">
+        <div class="dept-check-item"><input type="checkbox" id="f_d_製造部" value="製造部"><label for="f_d_製造部">製造部</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="f_d_機工" value="機工"><label for="f_d_機工">機工</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="f_d_膠工" value="膠工"><label for="f_d_膠工">膠工</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="f_d_電工" value="電工"><label for="f_d_電工">電工</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="f_d_電控" value="電控"><label for="f_d_電控">電控</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="f_d_設計" value="設計"><label for="f_d_設計">設計</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="f_d_業務" value="業務"><label for="f_d_業務">業務</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="f_d_採購" value="採購"><label for="f_d_採購">採購</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="f_d_生管" value="生管"><label for="f_d_生管">生管</label></div>
+      </div>
       <label class="form-label">負責人員</label>
       <input class="form-input" id="f_assignee" placeholder="輸入姓名" />
       <label class="form-label">建立日期</label>
@@ -231,10 +243,18 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <input class="form-input" id="e_title" />
       <label class="form-label">問題說明</label>
       <textarea class="form-textarea" id="e_desc"></textarea>
-      <label class="form-label">部門</label>
-      <select class="form-select" id="e_dept">
-        <option>製造部</option><option>機工</option><option>膠工</option><option>電工</option><option>電控</option><option>設計</option><option>業務</option><option>採購</option><option>生管</option>
-      </select>
+      <label class="form-label">部門（可多選）</label>
+      <div class="dept-checks" id="e_dept_checks">
+        <div class="dept-check-item"><input type="checkbox" id="e_d_製造部" value="製造部"><label for="e_d_製造部">製造部</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="e_d_機工" value="機工"><label for="e_d_機工">機工</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="e_d_膠工" value="膠工"><label for="e_d_膠工">膠工</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="e_d_電工" value="電工"><label for="e_d_電工">電工</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="e_d_電控" value="電控"><label for="e_d_電控">電控</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="e_d_設計" value="設計"><label for="e_d_設計">設計</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="e_d_業務" value="業務"><label for="e_d_業務">業務</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="e_d_採購" value="採購"><label for="e_d_採購">採購</label></div>
+        <div class="dept-check-item"><input type="checkbox" id="e_d_生管" value="生管"><label for="e_d_生管">生管</label></div>
+      </div>
       <label class="form-label">負責人員</label>
       <input class="form-input" id="e_assignee" />
       <label class="form-label">建立日期</label>
@@ -260,9 +280,18 @@ const LOGO_B64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAABQCAYAAADS
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwfU79xyTNJoK1hly6gZTgB12Ra4nbcRX_qm-YIUZJAN3UXb-dT7Sx5jAX_idDchMyP5g/exec';
 
 const DEPT_SHORT = {'製造部':'製','機工':'機','膠工':'膠','電工':'電','電控':'控','設計':'設','業務':'業','採購':'採','生管':'生'};
+const DEPT_LIST = ['製造部','機工','膠工','電工','電控','設計','業務','採購','生管'];
+function getDepts(dept) {
+  if (Array.isArray(dept)) return dept.filter(Boolean);
+  if (typeof dept === 'string' && dept.includes(',')) return dept.split(',').map(d=>d.trim()).filter(Boolean);
+  return dept ? [dept] : [];
+}
 function getDeptBadge(dept) {
-  const s = DEPT_SHORT[dept] || (dept?dept.slice(0,1):'?');
-  return `<span class="dept-badge">${s}</span>`;
+  const depts = getDepts(dept);
+  return depts.slice(0,3).map(d => {
+    const s = DEPT_SHORT[d] || (d?d.slice(0,1):'?');
+    return `<span class="dept-badge">${s}</span>`;
+  }).join('');
 }
 
 const PIN = '1277';
@@ -403,7 +432,7 @@ function exportCSV() {
       else if (filterTab === 'all') { if (i.status === 'done') return false; }
       else { if (i.status !== filterTab) return false; }
       if (filterUrg && !i.urgent) return false;
-      if (filterDept && String(i.dept||'').trim() !== filterDept.trim()) return false;
+      if (filterDept && !getDepts(i.dept).map(d=>d.trim()).includes(filterDept.trim())) return false;
       if (filterClient && String(i.client||'').trim() !== filterClient.trim()) return false;
       if (q && (i.wo+i.client+i.title+i.desc).toLowerCase().indexOf(q) < 0) return false;
       return true;
@@ -715,7 +744,7 @@ function renderList() {
       if (i.status !== filterTab) return false;
     }
     if (filterUrg && !i.urgent) return false;
-    if (filterDept && String(i.dept||'').trim() !== filterDept.trim()) return false;
+    if (filterDept && !getDepts(i.dept).map(d=>d.trim()).includes(filterDept.trim())) return false;
     if (filterClient && String(i.client||'').trim() !== filterClient.trim()) return false;
     if (q && !`${i.wo}${i.client}${i.title}${i.desc}`.toLowerCase().includes(q)) return false;
     return true;
@@ -848,7 +877,7 @@ function renderDetail() {
     <div class="info-row"><span class="info-lbl">工令號碼</span><span class="info-val">${i.wo}</span></div>
     <div class="info-row"><span class="info-lbl">狀態</span><span class="info-val"><span class="badge ${SC[i.status]}">${SM[i.status]}</span></span></div>
     <div class="info-row"><span class="info-lbl">建立日期</span><span class="info-val">${formatDate(i.date)}</span></div>
-    <div class="info-row"><span class="info-lbl">部門 / 人員</span><span class="info-val">${(i.dept||'—')+' / '+(i.assignee||'—')}</span></div>
+    <div class="info-row"><span class="info-lbl">部門 / 人員</span><span class="info-val">${(getDepts(i.dept).join(' / ')||'—')+' / '+(i.assignee||'—')}</span></div>
     <div class="info-row"><span class="info-lbl">實際完成日</span><span class="info-val" style="color:${i.actualDate?'#3B6D11':'#bbb'}">${i.actualDate||'尚未完成'}</span></div>
     <div class="desc-box">${i.desc||'（無說明）'}</div>
     ${dueHTML}${photosHTML}${repliesHTML}
@@ -893,7 +922,11 @@ function loadEditForm() {
   document.getElementById('e_assignee').value=i.assignee||'';
   document.getElementById('e_date').value=formatDate(i.date)||'';
   document.getElementById('e_urg').checked=!!i.urgent;
-  ['製造部', '機工', '膠工', '電工', '電控', '設計', '業務', '採購', '生管'].forEach((d,idx)=>{ if(d===i.dept) document.getElementById('e_dept').selectedIndex=idx; });
+  const curDepts = getDepts(i.dept);
+  DEPT_LIST.forEach(d => {
+    const cb = document.getElementById('e_d_' + d);
+    if (cb) cb.checked = curDepts.includes(d);
+  });
   Object.keys(SM).forEach((k,idx)=>{ if(k===i.status) document.getElementById('e_status').selectedIndex=idx; });
 }
 function saveEdit() {
@@ -902,7 +935,7 @@ function saveEdit() {
   i.client=document.getElementById('e_client').value.trim();
   i.title=document.getElementById('e_title').value.trim();
   i.desc=document.getElementById('e_desc').value.trim();
-  i.dept=document.getElementById('e_dept').value;
+  i.dept=Array.from(document.querySelectorAll('#e_dept_checks input:checked')).map(c=>c.value);
   i.assignee=document.getElementById('e_assignee').value.trim();
   i.date=document.getElementById('e_date').value||i.date;
   i.status=document.getElementById('e_status').value;
@@ -922,7 +955,7 @@ function saveNew() {
     status:document.getElementById('f_status').value,
     urgent:document.getElementById('f_urg').checked,
     date:document.getElementById('f_date').value||new Date().toISOString().slice(0,10),
-    dept:document.getElementById('f_dept').value,
+    dept:Array.from(document.querySelectorAll('#f_dept_checks input:checked')).map(c=>c.value),
     assignee:document.getElementById('f_assignee').value.trim(),
     desc:document.getElementById('f_desc').value.trim(),
     targetDates:due?[{date:due,done:false}]:[],
@@ -930,6 +963,7 @@ function saveNew() {
   });
   // 清空表單
   ['f_wo','f_client','f_title','f_desc','f_assignee','f_due'].forEach(id=>document.getElementById(id).value='');
+  document.querySelectorAll('#f_dept_checks input').forEach(cb=>cb.checked=false);
   document.getElementById('f_urg').checked=false;
   document.getElementById('f_date').value=new Date().toISOString().slice(0,10);
   showList();
