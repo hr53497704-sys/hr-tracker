@@ -20,6 +20,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
 .tab-bar{display:flex;background:#f8f9fa;border-bottom:1px solid #e0e0e0;position:sticky;top:68px;z-index:99}
 .tab{flex:1;padding:10px 4px;font-size:12px;text-align:center;cursor:pointer;color:#666;border-bottom:2px solid transparent;-webkit-tap-highlight-color:transparent}
 .tab.active{color:#2D5A8C;border-bottom:2px solid #2D5A8C;font-weight:600}
+.tab.overdue-tab.active{color:#cc0000;border-bottom:2px solid #cc0000}
 .search-bar{padding:9px 12px;background:#f8f9fa;border-bottom:1px solid #e0e0e0;display:flex;gap:7px}
 .search-bar input{flex:1;font-size:13px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;outline:none}
 .search-bar input:focus{border-color:#2D5A8C}
@@ -35,9 +36,9 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
 .card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
 .badge{font-size:10px;padding:3px 8px;border-radius:99px;font-weight:600}
 .s-open{background:#FAECE7;color:#993C1D}
-.s-progress{background:#FAEEDA;color:#854F0B}
 .s-done{background:#EAF3DE;color:#3B6D11}
 .s-wait{background:#EEF4FB;color:#185FA5}
+.s-overdue{background:#FFE5E5;color:#cc0000}
 .client-tag{background:#f0f0f0;border:1px solid #e0e0e0;border-radius:4px;padding:2px 6px;font-size:11px;color:#555}
 .dept-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:transparent;border:2px solid #cc0000;color:#222;font-size:13px;font-weight:700;font-style:italic;flex-shrink:0}
 .card-title{font-size:14px;font-weight:600;color:#222;margin-bottom:5px;line-height:1.4}
@@ -51,7 +52,6 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
 .due-old{background:#f5f5f5;color:#999;border:1px solid #e0e0e0;text-decoration:line-through}
 .fab{position:fixed;bottom:24px;right:calc(50% - 220px);background:#2D5A8C;color:#fff;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:26px;box-shadow:0 3px 12px rgba(45,90,140,0.4);border:none;z-index:50;-webkit-tap-highlight-color:transparent}
 @media(max-width:480px){.fab{right:16px}}
-/* 全螢幕遮罩 - 不用popup，直接在頁面內顯示 */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:200;align-items:flex-end;justify-content:center}
 .overlay.show{display:flex}
 .modal{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 30px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -69,7 +69,6 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
 .checkbox-row{display:flex;align-items:center;gap:10px;margin-top:14px;padding:4px 0}
 .checkbox-row input[type=checkbox]{width:20px;height:20px;cursor:pointer;accent-color:#2D5A8C}
 .checkbox-row label{font-size:14px;color:#333;cursor:pointer}
-/* 詳細頁 */
 .page{display:none;flex-direction:column;flex:1}
 .page.active{display:flex}
 .back-btn{padding:12px 16px;background:#f8f9fa;border-bottom:1px solid #e0e0e0;font-size:14px;color:#2D5A8C;cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:500;-webkit-tap-highlight-color:transparent}
@@ -105,7 +104,6 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
 .dept-check-item input{width:16px;height:16px;accent-color:#2D5A8C;cursor:pointer}
 .dept-check-item label{font-size:13px;color:#333;cursor:pointer}
 .empty-msg{text-align:center;color:#bbb;font-size:13px;padding:40px 20px}
-/* PIN 輸入區 - 直接嵌在頁面 */
 .pin-section{background:#fff;border:2px solid #2D5A8C;border-radius:12px;padding:16px;margin:16px 12px}
 .pin-title{font-size:15px;font-weight:600;color:#2D5A8C;margin-bottom:6px}
 .pin-desc{font-size:12px;color:#888;margin-bottom:10px}
@@ -137,7 +135,8 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
     <div class="tab-bar">
       <div class="tab active" onclick="switchTab('all')">全部</div>
       <div class="tab" onclick="switchTab('open')">待處理</div>
-      <div class="tab" onclick="switchTab('progress')">處理中</div>
+      <div class="tab" onclick="switchTab('wait')">等待中</div>
+      <div class="tab overdue-tab" onclick="switchTab('overdue')">🔴逾期</div>
       <div class="tab" onclick="switchTab('done')">已完成</div>
     </div>
     <div class="search-bar">
@@ -211,7 +210,9 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <input class="form-input" type="date" id="f_actual" />
       <label class="form-label">狀態</label>
       <select class="form-select" id="f_status">
-        <option value="open">待處理</option><option value="progress">處理中</option><option value="wait">等待中</option><option value="done">已完成</option>
+        <option value="open">待處理</option>
+        <option value="wait">等待中</option>
+        <option value="done">已完成</option>
       </select>
       <div class="checkbox-row">
         <input type="checkbox" id="f_urg" />
@@ -261,7 +262,9 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <input class="form-input" type="date" id="e_date" />
       <label class="form-label">狀態</label>
       <select class="form-select" id="e_status">
-        <option value="open">待處理</option><option value="progress">處理中</option><option value="wait">等待中</option><option value="done">已完成</option>
+        <option value="open">待處理</option>
+        <option value="wait">等待中</option>
+        <option value="done">已完成</option>
       </select>
       <div class="checkbox-row">
         <input type="checkbox" id="e_urg" />
@@ -281,6 +284,7 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwfU79xyTNJoK1hly6gZ
 
 const DEPT_SHORT = {'製造部':'製','機工':'機','膠工':'膠','電工':'電','電控':'控','設計':'設','業務':'業','採購':'採','生管':'生'};
 const DEPT_LIST = ['製造部','機工','膠工','電工','電控','設計','業務','採購','生管'];
+
 function getDepts(dept) {
   if (Array.isArray(dept)) return dept.filter(Boolean);
   if (typeof dept === 'string' && dept.includes(',')) return dept.split(',').map(d=>d.trim()).filter(Boolean);
@@ -294,9 +298,21 @@ function getDeptBadge(dept) {
   }).join('');
 }
 
+// 判斷工單是否逾期（有預定完成日、未完成、日期已過）
+function isOverdue(issue) {
+  if (issue.status === 'done') return false;
+  const tds = Array.isArray(issue.targetDates) ? issue.targetDates.filter(d=>d&&d.date) : [];
+  if (!tds.length) return false;
+  const last = tds[tds.length-1];
+  if (last.done) return false;
+  const today = new Date().toISOString().slice(0,10);
+  return String(last.date).slice(0,10) < today;
+}
+
 const PIN = '1277';
-const SM = {open:'待處理',progress:'處理中',done:'已完成',wait:'等待中'};
-const SC = {open:'s-open',progress:'s-progress',done:'s-done',wait:'s-wait'};
+// 移除 progress，新增 overdue（逾期為虛擬狀態，不存在資料中）
+const SM = {open:'待處理',done:'已完成',wait:'等待中'};
+const SC = {open:'s-open',done:'s-done',wait:'s-wait'};
 
 let issues = [], nextId = 100, filterTab = 'all', filterUrg = false, filterDept = '', filterClient = '', isAdmin = false, currentId = null;
 let pinNextAction = '';
@@ -309,7 +325,6 @@ function setSyncStatus(state, msg) {
   document.getElementById('syncText').textContent = msg;
 }
 
-// 頁面切換
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -323,7 +338,6 @@ function showList() {
 }
 function showDetail() { showPage('detailPage'); renderDetail(); }
 
-// FAB 點擊 - 直接跳到驗證頁或新增頁
 function clickFab() {
   if (isAdmin) {
     showPage('addPage');
@@ -351,22 +365,20 @@ function confirmPin() {
   }
 }
 
-// 載入資料
 async function loadFromSheet() {
   setSyncStatus('sync', '連線中...');
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
-    const r = await fetch(SCRIPT_URL + '?action=load', {
-      method: 'GET',
-      signal: controller.signal
-    });
+    const r = await fetch(SCRIPT_URL + '?action=load', { method: 'GET', signal: controller.signal });
     clearTimeout(timeout);
     const text = await r.text();
     const data = JSON.parse(text);
     if (data.issues && Array.isArray(data.issues) && data.issues.length > 0) {
       issues = data.issues.map(i => ({
         ...i,
+        // 舊資料 progress 自動轉為 open
+        status: i.status === 'progress' ? 'open' : i.status,
         date: String(i.date||'').slice(0,10),
         targetDates: Array.isArray(i.targetDates) ? i.targetDates.filter(d=>d&&d.date) : [],
         replies: Array.isArray(i.replies) ? i.replies.filter(r=>r&&r.text) : []
@@ -382,14 +394,6 @@ async function loadFromSheet() {
     setSyncStatus('err', '無法連線，請確認網路後重試');
   }
   renderList();
-}
-
-function defaultData() {
-  return [
-    {id:1,wo:'26189',client:'台灣杜邦',title:'高錳循環流量低下',status:'progress',urgent:true,date:'2025-06-20',dept:'製造部',assignee:'王大明',desc:'高錳酸鉀槽循環泵流量不足，影響電鍍均勻性。',targetDates:[{date:'2025-07-05',done:true},{date:'2025-07-20',done:false}],replies:[{date:'2025-06-21',text:'已確認濾芯堵塞，安排更換中。'}]},
-    {id:2,wo:'26190',client:'台灣杜邦',title:'鍍銅層厚度不均',status:'open',urgent:true,date:'2025-06-25',dept:'品管部',assignee:'李小花',desc:'客戶反映鍍銅層厚度偏差超標，要求原因分析。',targetDates:[{date:'2025-07-10',done:false}],replies:[]},
-    {id:3,wo:'26035',client:'乾坤科技',title:'電鍍槽液位感測異常',status:'done',urgent:false,date:'2025-06-10',dept:'製造部',assignee:'陳阿山',desc:'液位感測器誤報導致自動補液停止。',targetDates:[{date:'2025-06-15',done:true}],replies:[{date:'2025-06-11',text:'清潔感測器後恢復正常。'}]},
-  ];
 }
 
 async function saveToSheet() {
@@ -413,7 +417,6 @@ async function saveToSheet() {
   }
 }
 
-// 列表
 function formatDate(d) {
   if (!d) return '';
   var s = String(d).slice(0,10);
@@ -421,19 +424,27 @@ function formatDate(d) {
   try { return new Date(d).toISOString().slice(0,10); } catch(e) { return s; }
 }
 
+function filterByDept(dept) { filterDept = dept; renderList(); }
+function filterByClient(c) { filterClient = c; renderList(); }
 
-function filterByDept(dept) {
-  filterDept = dept;
-  renderList();
+function updateClientFilter() {
+  const sel = document.getElementById('clientFilter');
+  if (!sel) return;
+  const cur = sel.value;
+  const cs = [...new Set(issues.map(i => i.client).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">全部客戶</option>' + cs.map(c =>
+    '<option value="' + c + '"' + (c===cur?' selected':'') + '>' + c + '</option>'
+  ).join('');
 }
 
 function exportCSV() {
   function doExport() {
     var ExcelJS = window.ExcelJS;
     var q = document.getElementById('searchInput').value.toLowerCase();
-    var SM2 = {open:'待處理',progress:'處理中',done:'已完成',wait:'等待中'};
+    var SM2 = {open:'待處理',done:'已完成',wait:'等待中'};
     var data = issues.filter(function(i) {
       if (filterTab === 'done') { if (i.status !== 'done') return false; }
+      else if (filterTab === 'overdue') { if (!isOverdue(i)) return false; }
       else if (filterTab === 'all') { if (i.status === 'done') return false; }
       else { if (i.status !== filterTab) return false; }
       if (filterUrg && !i.urgent) return false;
@@ -448,94 +459,51 @@ function exportCSV() {
     wb.creator = '鴻睿自動化';
     wb.created = new Date();
     var ws = wb.addWorksheet('客戶問題追蹤清單');
-
     var COLS = 12;
-
-    // ── 欄寬 ──
     var colWidths = [10,14,24,8,7,11,8,10,30,13,13,34];
     colWidths.forEach(function(w,i){ ws.getColumn(i+1).width = w; });
 
-    // ── 共用樣式函數 ──
     function applyStyle(cell, opts) {
-      if (opts.fill)      cell.fill      = {type:'pattern',pattern:'solid',fgColor:{argb:opts.fill}};
-      if (opts.font)      cell.font      = Object.assign({name:'微軟正黑體',size:10},opts.font);
-      if (opts.align)     cell.alignment = Object.assign({vertical:'middle',wrapText:true},opts.align);
+      if (opts.fill)  cell.fill  = {type:'pattern',pattern:'solid',fgColor:{argb:opts.fill}};
+      if (opts.font)  cell.font  = Object.assign({name:'微軟正黑體',size:10},opts.font);
+      if (opts.align) cell.alignment = Object.assign({vertical:'middle',wrapText:true},opts.align);
       if (opts.border !== false) {
         var s = {style:'thin',color:{argb:'FFB8CCE4'}};
         cell.border = {top:s,left:s,bottom:s,right:s};
       }
     }
 
-    // ══════════════════════════════
-    // 第1列：公司名稱大標題
-    // ══════════════════════════════
     ws.getRow(1).height = 38;
     ws.mergeCells(1,1,1,COLS);
     var r1 = ws.getCell('A1');
     r1.value = '鴻睿自動化股份有限公司';
-    applyStyle(r1, {
-      fill:'FF2D5A8C',
-      font:{size:16,bold:true,color:{argb:'FFFFFFFF'}},
-      align:{horizontal:'center'},
-      border:false
-    });
+    applyStyle(r1,{fill:'FF2D5A8C',font:{size:16,bold:true,color:{argb:'FFFFFFFF'}},align:{horizontal:'center'},border:false});
 
-    // ══════════════════════════════
-    // 第2列：副標題
-    // ══════════════════════════════
     ws.getRow(2).height = 24;
     ws.mergeCells(2,1,2,COLS);
     var r2 = ws.getCell('A2');
-    r2.value = '客戶問題追蹤清單';
-    applyStyle(r2, {
-      fill:'FFD6E4F0',
-      font:{size:12,bold:true,color:{argb:'FF2D5A8C'}},
-      align:{horizontal:'center'},
-      border:false
-    });
+    // 逾期Tab匯出時標題特別顯示
+    var sheetTitle = filterTab === 'overdue' ? '逾期工單清單' : '客戶問題追蹤清單';
+    r2.value = sheetTitle;
+    applyStyle(r2,{fill:'FFD6E4F0',font:{size:12,bold:true,color:{argb:'FF2D5A8C'}},align:{horizontal:'center'},border:false});
 
-    // ══════════════════════════════
-    // 第3列：匯出日期 + 筆數
-    // ══════════════════════════════
     ws.getRow(3).height = 18;
     ws.mergeCells(3,1,3,COLS);
     var r3 = ws.getCell('A3');
     var today = new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit'});
     r3.value = '匯出日期：' + today + '　　總筆數：' + data.length + ' 筆';
-    applyStyle(r3, {
-      fill:'FFF2F6FB',
-      font:{size:10,color:{argb:'FF555555'}},
-      align:{horizontal:'left',indent:1},
-      border:false
-    });
+    applyStyle(r3,{fill:'FFF2F6FB',font:{size:10,color:{argb:'FF555555'}},align:{horizontal:'left',indent:1},border:false});
 
-    // ══════════════════════════════
-    // 第4列：空行
-    // ══════════════════════════════
     ws.getRow(4).height = 6;
-
-    // ══════════════════════════════
-    // 第5列：欄位標題
-    // ══════════════════════════════
     ws.getRow(5).height = 22;
-    var headers = ['工令號碼','客戶名稱','問題標題','狀態','急件',
-                   '建立日期','部門','負責人員','問題說明','預定完成日','實際完成日','回覆紀錄'];
+    var headers = ['工令號碼','客戶名稱','問題標題','狀態','急件','建立日期','部門','負責人員','問題說明','預定完成日','實際完成日','回覆紀錄'];
     headers.forEach(function(h,ci){
-      var cell = ws.getCell(5, ci+1);
+      var cell = ws.getCell(5,ci+1);
       cell.value = h;
-      applyStyle(cell, {
-        fill:'FF4A7DB5',
-        font:{size:10,bold:true,color:{argb:'FFFFFFFF'}},
-        align:{horizontal:'center'}
-      });
+      applyStyle(cell,{fill:'FF4A7DB5',font:{size:10,bold:true,color:{argb:'FFFFFFFF'}},align:{horizontal:'center'}});
     });
 
-    // ══════════════════════════════
-    // 第6列起：資料
-    // ══════════════════════════════
-    var STATUS_COLOR = {
-      '待處理':'FFCC3300','處理中':'FF854F0B','已完成':'FF3B6D11','等待中':'FF185FA5'
-    };
+    var STATUS_COLOR = {'待處理':'FFCC3300','已完成':'FF3B6D11','等待中':'FF185FA5','逾期':'FFCC0000'};
 
     data.forEach(function(issue, ri) {
       var rowNum = ri + 6;
@@ -550,9 +518,12 @@ function exportCSV() {
         return '['+r.date+'] '+r.text;
       }).join('\n');
 
+      // 逾期工單在狀態欄顯示「逾期」
+      var statusLabel = isOverdue(issue) ? '逾期' : (SM2[issue.status]||'');
+
       var rowVals = [
         issue.wo||'', issue.client||'', issue.title||'',
-        SM2[issue.status]||'',
+        statusLabel,
         issue.urgent ? '🔴 急件' : '',
         String(issue.date||'').slice(0,10),
         issue.dept||'', issue.assignee||'', issue.desc||'',
@@ -564,31 +535,19 @@ function exportCSV() {
         var cell = ws.getCell(rowNum, ci+1);
         cell.value = val;
         var isCenter = centerCols.indexOf(ci+1) >= 0;
-        applyStyle(cell, {
-          fill: rowBg,
-          font: {size:10},
-          align: {horizontal: isCenter?'center':'left'}
-        });
-        // 狀態欄顏色
+        applyStyle(cell,{fill:rowBg,font:{size:10},align:{horizontal:isCenter?'center':'left'}});
         if (ci===3 && STATUS_COLOR[val]) {
           cell.font = {name:'微軟正黑體',size:10,bold:true,color:{argb:STATUS_COLOR[val]}};
         }
-        // 急件欄顏色
         if (ci===4 && val) {
           cell.font = {name:'微軟正黑體',size:10,bold:true,color:{argb:'FFCC3300'}};
         }
       });
     });
 
-    // ══════════════════════════════
-    // 凍結標題（第5列以上固定）
-    // ══════════════════════════════
     ws.views = [{state:'frozen', ySplit:5, activeCell:'A6'}];
 
-    // ══════════════════════════════
-    // 產生並下載
-    // ══════════════════════════════
-    var fname = '鴻睿問題清單_' + new Date().toISOString().slice(0,10) + '.xlsx';
+    var fname = '鴻睿問題清單_' + (filterTab==='overdue'?'逾期_':'') + new Date().toISOString().slice(0,10) + '.xlsx';
     wb.xlsx.writeBuffer().then(function(buffer){
       var blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
       var url  = URL.createObjectURL(blob);
@@ -600,7 +559,6 @@ function exportCSV() {
     });
   }
 
-  // 載入 ExcelJS
   if (window.ExcelJS) {
     doExport();
   } else {
@@ -611,30 +569,15 @@ function exportCSV() {
     document.head.appendChild(script);
   }
 }
-function filterByClient(c) { filterClient = c; renderList(); }
-function updateClientFilter() {
-  const sel = document.getElementById('clientFilter');
-  if (!sel) return;
-  const cur = sel.value;
-  const cs = [...new Set(issues.map(i => i.client).filter(Boolean))].sort();
-  sel.innerHTML = '<option value="">全部客戶</option>' + cs.map(c =>
-    '<option value="' + c + '"' + (c===cur?' selected':'') + '>' + c + '</option>'
-  ).join('');
-}
+
 function saveActualDate(id) {
   const i = issues.find(x => String(x.id) === String(id));
   if (!i) return;
   const d = document.getElementById('actualDate').value;
-  if (!d) { alert('\u8acb\u9078\u64c7\u5be6\u969b\u5b8c\u6210\u65e5'); return; }
+  if (!d) { alert('請選擇實際完成日'); return; }
   i.actualDate = d;
   renderDetail();
-  alert('\u2705 \u5be6\u969b\u5b8c\u6210\u65e5\u5df2\u5132\u5b58\uff1a' + d + '\n\n\u8acb\u8a18\u5f97\u6309\u9802\u90e8\u300c\u2601 \u5132\u5b58\u300d\u540c\u6b65\u5230\u8a66\u7b97\u8868\uff01');
-}
-
-function setQuickDate(days) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  document.getElementById('newDue').value = d.toISOString().slice(0,10);
+  alert('✅ 實際完成日已儲存：' + d + '\n\n請記得按頂部「☁ 儲存」同步到試算表！');
 }
 
 function deleteIssue(id) {
@@ -645,17 +588,13 @@ function deleteIssue(id) {
   showList();
 }
 
-
 function uploadPhotos(id, input) {
   var i = issues.find(function(x) { return String(x.id) === String(id); });
   if (!i) return;
   if (!i.photos) i.photos = [];
   Array.from(input.files).forEach(function(file) {
     var reader = new FileReader();
-    reader.onload = function(e) {
-      i.photos.push(e.target.result);
-      renderDetail();
-    };
+    reader.onload = function(e) { i.photos.push(e.target.result); renderDetail(); };
     reader.readAsDataURL(file);
   });
 }
@@ -675,17 +614,13 @@ function viewPhoto(src) {
   var img = document.createElement('img');
   img.src = src;
   img.style.cssText = 'max-width:95vw;max-height:95vh;object-fit:contain;border-radius:8px';
-  ov.appendChild(img);
-  document.body.appendChild(ov);
+  ov.appendChild(img); document.body.appendChild(ov);
 }
-
-
 
 function editDue(id, idx) {
   var i = issues.find(function(x) { return String(x.id) === String(id); });
   if (!i || !i.targetDates[idx]) return;
-  var oldDate = i.targetDates[idx].date;
-  var newDate = prompt('修改預定完成日：', oldDate);
+  var newDate = prompt('修改預定完成日：', i.targetDates[idx].date);
   if (newDate === null) return;
   newDate = newDate.trim();
   if (!newDate) { alert('日期不能空白'); return; }
@@ -704,8 +639,7 @@ function deleteDue(id, idx) {
 function editReply(id, idx) {
   var i = issues.find(function(x) { return String(x.id) === String(id); });
   if (!i || !i.replies[idx]) return;
-  var oldText = i.replies[idx].text;
-  var newText = prompt('修改回覆內容：', oldText);
+  var newText = prompt('修改回覆內容：', i.replies[idx].text);
   if (newText === null) return;
   newText = newText.trim();
   if (!newText) { alert('回覆內容不能空白'); return; }
@@ -723,26 +657,37 @@ function deleteReply(id, idx) {
 
 function switchTab(t) {
   filterTab = t;
-  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['all','open','progress','done'][i]===t));
+  const tabs = ['all','open','wait','overdue','done'];
+  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', tabs[i]===t));
   renderList();
 }
 function toggleUrg() { filterUrg=!filterUrg; document.getElementById('urgBtn').classList.toggle('on',filterUrg); renderList(); }
 
 function renderList() {
   updateClientFilter();
-  const baseIssues = filterDept ? issues.filter(i => String(i.dept||'').trim() === filterDept.trim()) : issues;
-  const c={open:0,progress:0,done:0,wait:0};
-  baseIssues.forEach(i => c[i.status]=(c[i.status]||0)+1);
+  const baseIssues = filterDept ? issues.filter(i => getDepts(i.dept).map(d=>d.trim()).includes(filterDept.trim())) : issues;
+  const c={open:0,done:0,wait:0,overdue:0};
+  baseIssues.forEach(i => {
+    if (i.status !== 'done') {
+      c[i.status] = (c[i.status]||0) + 1;
+    } else {
+      c.done++;
+    }
+    if (isOverdue(i)) c.overdue++;
+  });
   const totalCount = baseIssues.filter(i => i.status !== 'done').length;
   document.getElementById('statsBar').innerHTML = `
     <div class="stat-chip"><div class="stat-num">${totalCount}</div><div class="stat-lbl">全部</div></div>
-    <div class="stat-chip"><div class="stat-num" style="color:#993C1D">${c.open}</div><div class="stat-lbl">待處理</div></div>
-    <div class="stat-chip"><div class="stat-num" style="color:#854F0B">${c.progress}</div><div class="stat-lbl">處理中</div></div>
+    <div class="stat-chip"><div class="stat-num" style="color:#993C1D">${c.open||0}</div><div class="stat-lbl">待處理</div></div>
+    <div class="stat-chip"><div class="stat-num" style="color:#cc0000">${c.overdue}</div><div class="stat-lbl">逾期</div></div>
     <div class="stat-chip"><div class="stat-num" style="color:#3B6D11">${c.done}</div><div class="stat-lbl">已完成</div></div>`;
+
   const q = document.getElementById('searchInput').value.toLowerCase();
   const data = issues.filter(i => {
     if (filterTab === 'done') {
       if (i.status !== 'done') return false;
+    } else if (filterTab === 'overdue') {
+      if (!isOverdue(i)) return false;
     } else if (filterTab === 'all') {
       if (i.status === 'done' && !q) return false;
     } else {
@@ -754,7 +699,7 @@ function renderList() {
     if (q && !`${i.wo}${i.client}${i.title}${i.desc}`.toLowerCase().includes(q)) return false;
     return true;
   });
-  // 排序：逾時 > 即將到期 > 其他（依預定完成日）
+
   const sortToday = new Date().toISOString().slice(0,10);
   data.sort(function(a, b) {
     function getScore(i) {
@@ -762,14 +707,13 @@ function renderList() {
       var last = tds[tds.length-1];
       if (!last || last.done || i.status === 'done') return 3;
       var fd = String(last.date).slice(0,10);
-      if (fd < sortToday) return 0; // 逾時
+      if (fd < sortToday) return 0;
       var diff = (new Date(fd) - new Date()) / 86400000;
-      if (diff <= 3) return 1; // 即將到期
-      return 2; // 一般
+      if (diff <= 3) return 1;
+      return 2;
     }
     var sa = getScore(a), sb = getScore(b);
     if (sa !== sb) return sa - sb;
-    // 同等級依預定完成日排序
     var tda = Array.isArray(a.targetDates) ? a.targetDates.filter(function(d){return d&&d.date;}) : [];
     var tdb = Array.isArray(b.targetDates) ? b.targetDates.filter(function(d){return d&&d.date;}) : [];
     var la = tda[tda.length-1], lb = tdb[tdb.length-1];
@@ -778,23 +722,30 @@ function renderList() {
     if (lb) return 1;
     return 0;
   });
+
   const list = document.getElementById('issueList');
   if (!data.length) { list.innerHTML='<div class="empty-msg">沒有符合的記錄</div>'; return; }
   list.innerHTML = data.map(i => {
     const today = new Date().toISOString().slice(0,10);
     const tds = Array.isArray(i.targetDates) ? i.targetDates.filter(d=>d&&d.date) : [];
     const last = tds[tds.length-1];
-    const isOver = last&&!last.done&&formatDate(last.date)<today&&i.status!=='done';
+    const over = isOverdue(i);
     const diff = last&&!last.done ? (new Date(formatDate(last.date))-new Date())/86400000 : 999;
-    const isSoon = !isOver&&diff>=0&&diff<=3&&i.status!=='done';
+    const isSoon = !over&&diff>=0&&diff<=3&&i.status!=='done';
     const dueTags = tds.map((d,ix)=>{
       const isLast=ix===tds.length-1;
       const cls=d.done?'due-old':(isSoon&&isLast)?'due-soon':'due-now';
-      const ext=isOver&&isLast?' <strong style="color:#cc0000;font-weight:900">▲逾時</strong>':
+      const ext=over&&isLast?' <strong style="color:#cc0000;font-weight:900">▲逾時</strong>':
                 isSoon&&isLast?' <strong style="color:#856404;font-weight:700">⏰即將到期</strong>':'';
       return '<span class="due-tag '+cls+'">📅 '+formatDate(d.date)+ext+'</span>';
     }).join('');
-    return `<div class="issue-card ${isOver?'card-overdue':isSoon?'card-warning':''}" onclick="openDetail(${i.id})">
+
+    // 逾期工單顯示紅色「逾期」徽章
+    const statusBadge = over
+      ? `<span class="badge s-overdue">🔴 逾期</span>`
+      : `<span class="badge ${SC[i.status]||'s-open'}">${SM[i.status]||i.status}</span>`;
+
+    return `<div class="issue-card ${over?'card-overdue':isSoon?'card-warning':''}" onclick="openDetail(${i.id})">
       <div class="card-top">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span class="client-tag">${i.client}</span>
@@ -802,20 +753,19 @@ function renderList() {
         </div>
         <div style="display:flex;align-items:center;gap:5px">
           ${getDeptBadge(i.dept)}
-          <span class="badge ${SC[i.status]}">${SM[i.status]}</span>
+          ${statusBadge}
         </div>
       </div>
       <div class="card-title">${i.title}</div>
       <div class="card-meta">
         <span>工令 ${i.wo}</span><span>建立 ${formatDate(i.date)}</span>
-        <span>${i.dept||''}${i.assignee?' · '+i.assignee:''}</span>
+        <span>${(Array.isArray(i.dept)?i.dept.join('、'):i.dept)||''}${i.assignee?' · '+i.assignee:''}</span>
       </div>
       ${dueTags?'<div class="due-tags">'+dueTags+'</div>':''}
     </div>`;
   }).join('');
 }
 
-// 詳細頁
 function openDetail(id) { listScrollPos = window.scrollY; currentId=id; showPage('detailPage'); renderDetail(); }
 
 function renderDetail() {
@@ -823,27 +773,32 @@ function renderDetail() {
   if (!i) return;
   const _tds = Array.isArray(i.targetDates) ? i.targetDates.filter(d=>d&&d.date) : [];
   const _today = new Date().toISOString().slice(0,10);
+  const over = isOverdue(i);
+
   const dueHTML = _tds.length ? `
     <div class="section">
       <div class="section-title">預定完成日記錄</div>
       <div class="due-history">
         ${_tds.map((d,idx)=>{
           const isLast=idx===_tds.length-1;
-          const isOverdue=!d.done&&isLast&&formatDate(d.date)<_today&&i.status!=='done';
-          return `<div class="due-item" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="display:flex;align-items:center;gap:6px"><div class="due-dot" style="background:${d.done?'#993C1D':'#3B6D11'}"></div><span class="${d.done?'crossed':isLast?'latest-due':''}">${formatDate(d.date)}${d.done?' (延期)':isLast?' 【目前預定】':''}${isOverdue?' <strong style=\'color:#cc0000\'>⚠逾時</strong>':''}</span></div>${isAdmin?`<div style="display:flex;gap:4px"><button onclick="editDue('${i.id}',${idx})" style="background:none;border:none;color:#aaa;font-size:12px;cursor:pointer">✏️</button><button onclick="deleteDue('${i.id}',${idx})" style="background:none;border:none;color:#ccc;font-size:12px;cursor:pointer">🗑</button></div>`:''}</div>`;
+          const isOverdue2=!d.done&&isLast&&formatDate(d.date)<_today&&i.status!=='done';
+          return `<div class="due-item" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="display:flex;align-items:center;gap:6px"><div class="due-dot" style="background:${d.done?'#993C1D':'#3B6D11'}"></div><span class="${d.done?'crossed':isLast?'latest-due':''}">${formatDate(d.date)}${d.done?' (延期)':isLast?' 【目前預定】':''}${isOverdue2?' <strong style=\'color:#cc0000\'>⚠逾時</strong>':''}</span></div>${isAdmin?`<div style="display:flex;gap:4px"><button onclick="editDue('${i.id}',${idx})" style="background:none;border:none;color:#aaa;font-size:12px;cursor:pointer">✏️</button><button onclick="deleteDue('${i.id}',${idx})" style="background:none;border:none;color:#ccc;font-size:12px;cursor:pointer">🗑</button></div>`:''}</div>`;
         }).join('')}
       </div>
     </div>` : '';
+
   const _replies = Array.isArray(i.replies) ? i.replies.filter(r=>r&&r.text) : [];
   const _photos = Array.isArray(i.photos) ? i.photos : [];
   const photosHTML = _photos.length ? `<div class="section"><div class="section-title">附件照片（${_photos.length}張）</div><div class="photo-grid">${_photos.map((p,px)=>'<div style="position:relative"><img src="'+p+'" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid #eee;cursor:pointer" onclick="viewPhoto(this.src)" /><button onclick="deletePhoto(\''+i.id+'\','+px+')" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:10px;cursor:pointer">✕</button></div>').join('')}</div></div>` : '';
+
   const repliesHTML = `
     <div class="section">
       <div class="section-title">處理紀錄（${_replies.length} 則）</div>
       <div class="reply-list">
-        ${_replies.length?_replies.map((r,rx)=>`<div class="reply-card" style="position:relative"><div class="reply-date">${r.date||''}</div><div id="reply-text-${i.id}-${rx}" class="reply-text">${r.text||''}</div>${isAdmin?`<div style="position:absolute;top:6px;right:8px;display:flex;gap:4px"><button onclick="editReply('${i.id}',${rx})" style="background:none;border:none;color:#aaa;font-size:13px;cursor:pointer" title="編輯">✏️</button><button onclick="deleteReply('${i.id}',${rx})" style="background:none;border:none;color:#ccc;font-size:13px;cursor:pointer" title="刪除">🗑</button></div>`:''}</div>`).join(''):'<div class="empty-msg" style="padding:12px">尚無處理紀錄</div>'}
+        ${_replies.length?_replies.map((r,rx)=>`<div class="reply-card" style="position:relative"><div class="reply-date">${r.date||''}</div><div class="reply-text">${r.text||''}</div>${isAdmin?`<div style="position:absolute;top:6px;right:8px;display:flex;gap:4px"><button onclick="editReply('${i.id}',${rx})" style="background:none;border:none;color:#aaa;font-size:13px;cursor:pointer">✏️</button><button onclick="deleteReply('${i.id}',${rx})" style="background:none;border:none;color:#ccc;font-size:13px;cursor:pointer">🗑</button></div>`:''}</div>`).join(''):'<div class="empty-msg" style="padding:12px">尚無處理紀錄</div>'}
       </div>
     </div>`;
+
   const adminHTML = isAdmin ? `
     <div class="admin-area">
       <div class="section-title">生管操作區</div>
@@ -859,7 +814,9 @@ function renderDetail() {
       </div>
       <label class="form-label" style="margin-top:0">更改狀態</label>
       <select class="form-select" onchange="changeStatus(this.value)">
-        ${Object.entries(SM).map(([k,v])=>`<option value="${k}" ${i.status===k?'selected':''}>${v}</option>`).join('')}
+        <option value="open" ${i.status==='open'?'selected':''}>待處理</option>
+        <option value="wait" ${i.status==='wait'?'selected':''}>等待中</option>
+        <option value="done" ${i.status==='done'?'selected':''}>已完成</option>
       </select>
       <label class="form-label">實際完成日</label>
       <div class="add-row">
@@ -876,17 +833,18 @@ function renderDetail() {
       <button class="blue-btn" style="width:100%;margin-top:8px;padding:12px" onclick="addReply()">送出回覆</button>
     </div>` : '<div class="lock-msg">🔒 需要生管密碼才能編輯</div>';
 
+  const statusBadge = over ? `<span class="badge s-overdue">🔴 逾期</span>` : `<span class="badge ${SC[i.status]||'s-open'}">${SM[i.status]||i.status}</span>`;
+
   document.getElementById('detailBody').innerHTML = `
     <div class="detail-title">${i.urgent?'🔴 ':''}${i.title}</div>
     <div class="info-row"><span class="info-lbl">客戶</span><span class="info-val">${i.client}</span></div>
     <div class="info-row"><span class="info-lbl">工令號碼</span><span class="info-val">${i.wo}</span></div>
-    <div class="info-row"><span class="info-lbl">狀態</span><span class="info-val"><span class="badge ${SC[i.status]}">${SM[i.status]}</span></span></div>
+    <div class="info-row"><span class="info-lbl">狀態</span><span class="info-val">${statusBadge}</span></div>
     <div class="info-row"><span class="info-lbl">建立日期</span><span class="info-val">${formatDate(i.date)}</span></div>
     <div class="info-row"><span class="info-lbl">部門 / 人員</span><span class="info-val">${(getDepts(i.dept).join(' / ')||'—')+' / '+(i.assignee||'—')}</span></div>
     <div class="info-row"><span class="info-lbl">實際完成日</span><span class="info-val" style="color:${i.actualDate?'#3B6D11':'#bbb'}">${i.actualDate||'尚未完成'}</span></div>
     <div class="desc-box">${i.desc||'（無說明）'}</div>
-    ${dueHTML}${photosHTML}${repliesHTML}
-    ${adminHTML}`;
+    ${dueHTML}${photosHTML}${repliesHTML}${adminHTML}`;
 }
 
 function changeStatus(st) { const i=issues.find(x=>x.id===currentId); if(i){i.status=st;renderDetail();} }
@@ -912,7 +870,6 @@ function addReply() {
   i.replies.push({date:new Date().toISOString().slice(0,10),text:txt}); renderDetail();
 }
 
-// 編輯
 function goEdit() {
   if (!isAdmin) { pinNextAction='edit'; document.getElementById('pinInput').value=''; document.getElementById('pinErr').textContent=''; showPage('pinPage'); return; }
   loadEditForm(); showPage('editPage');
@@ -932,7 +889,8 @@ function loadEditForm() {
     const cb = document.getElementById('e_d_' + d);
     if (cb) cb.checked = curDepts.includes(d);
   });
-  Object.keys(SM).forEach((k,idx)=>{ if(k===i.status) document.getElementById('e_status').selectedIndex=idx; });
+  const statusSel = document.getElementById('e_status');
+  Array.from(statusSel.options).forEach((opt,idx) => { if(opt.value===i.status) statusSel.selectedIndex=idx; });
 }
 function saveEdit() {
   const i=issues.find(x=>x.id===currentId);
@@ -948,7 +906,6 @@ function saveEdit() {
   showPage('detailPage'); renderDetail();
 }
 
-// 新增
 function saveNew() {
   const wo=document.getElementById('f_wo').value.trim();
   const client=document.getElementById('f_client').value.trim();
@@ -966,7 +923,6 @@ function saveNew() {
     targetDates:due?[{date:due,done:false}]:[],
     replies:[]
   });
-  // 清空表單
   ['f_wo','f_client','f_title','f_desc','f_assignee','f_due'].forEach(id=>document.getElementById(id).value='');
   document.querySelectorAll('#f_dept_checks input').forEach(cb=>cb.checked=false);
   document.getElementById('f_urg').checked=false;
@@ -974,7 +930,6 @@ function saveNew() {
   showList();
 }
 
-// Enter 鍵確認密碼
 document.getElementById('pinInput').addEventListener('keypress', function(e){ if(e.key==='Enter') confirmPin(); });
 
 loadFromSheet();
