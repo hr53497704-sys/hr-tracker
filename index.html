@@ -963,22 +963,4 @@ function saveNew() {
     urgent:document.getElementById('f_urg').checked,
     date:document.getElementById('f_date').value||new Date().toISOString().slice(0,10),
     dept:Array.from(document.querySelectorAll('#f_dept_checks input:checked')).map(c=>c.value),
-    assignee:document.getElementById('f_assignee').value.trim(),
-    desc:document.getElementById('f_desc').value.trim(),
-    targetDates:due?[{date:due,done:false}]:[],
-    replies:[]
-  });
-  changedIds.add(newId);
-  ['f_wo','f_client','f_title','f_desc','f_assignee','f_due'].forEach(id=>document.getElementById(id).value='');
-  document.querySelectorAll('#f_dept_checks input').forEach(cb=>cb.checked=false);
-  document.getElementById('f_urg').checked=false;
-  document.getElementById('f_date').value=new Date().toISOString().slice(0,10);
-  showList();
-}
-
-document.getElementById('pinInput').addEventListener('keypress', function(e){ if(e.key==='Enter') confirmPin(); });
-
-loadFromSheet();
-</script>
-</body>
-</html>
+    ass
