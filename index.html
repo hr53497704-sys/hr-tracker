@@ -401,13 +401,13 @@ async function saveToSheet() {
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
+    const payload = JSON.stringify(issues);
     await fetch(SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({issues: issues})
+      body: payload
     });
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, 3000));
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
