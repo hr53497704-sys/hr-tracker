@@ -397,18 +397,14 @@ async function loadFromSheet() {
   renderList();
 }
 
-function pingUrl(url) {
-  return new Promise(function(resolve) {
-    const img = new Image();
-    img.onload = img.onerror = function() { resolve(); };
-    img.src = url + '&_t=' + Date.now();
-    setTimeout(resolve, 3000);
-  });
-}
 
 async function syncOne(issue) {
   const url = SCRIPT_URL + '?action=update&data=' + encodeURIComponent(JSON.stringify(issue));
-  await pingUrl(url);
+  try {
+    await fetch(url);
+  } catch(e) {
+    // 忽略CORS錯誤，資料已送出
+  }
   await new Promise(r => setTimeout(r, 500));
 }
 
@@ -427,7 +423,7 @@ async function saveToSheet() {
       if (issue) await syncOne(issue);
     }
     changedIds.clear();
-    pingUrl(SCRIPT_URL + '?action=synctable');
+    fetch(SCRIPT_URL + '?action=synctable').catch(()=>{});
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
