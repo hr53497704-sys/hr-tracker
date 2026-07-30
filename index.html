@@ -400,7 +400,7 @@ async function loadFromSheet() {
 async function syncOne(issue) {
   const url = SCRIPT_URL + '?action=update&data=' + encodeURIComponent(JSON.stringify(issue));
   await fetch(url);
-  await new Promise(r => setTimeout(r, 800));
+  await new Promise(r => setTimeout(r, 500));
 }
 
 async function saveToSheet() {
@@ -408,7 +408,6 @@ async function saveToSheet() {
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    // 傳送所有有標記變動的資料
     if (changedIds.size === 0) {
       setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
       btn.textContent = '☁ 儲存';
@@ -419,6 +418,8 @@ async function saveToSheet() {
       if (issue) await syncOne(issue);
     }
     changedIds.clear();
+    // 非同步更新工單資料Tab，不影響主流程
+    fetch(SCRIPT_URL + '?action=synctable');
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
@@ -947,9 +948,4 @@ function saveNew() {
   showList();
 }
 
-document.getElementById('pinInput').addEventListener('keypress', function(e){ if(e.key==='Enter') confirmPin(); });
-
-loadFromSheet();
-</script>
-</body>
-</html>
+document.getElementById('pinInput').addEventListener('keypress', function(e){ if(e.key==='Enter') confirmPin
