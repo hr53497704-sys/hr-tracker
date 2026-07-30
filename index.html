@@ -120,7 +120,7 @@ body{font-family:'Microsoft JhengHei','PingFang TC',sans-serif;background:#f0f4f
       <div class="topbar-company">鴻睿自動化股份有限公司</div>
       <div class="topbar-title">客戶問題追蹤系統</div>
     </div>
-    <button class="save-btn" onclick="saveToSheet()" id="saveBtn">☁ 儲存</button>
+    <button class="save-btn" onclick="saveToSheet()" id="saveBtn" style="display:none">☁ 儲存</button>
     <button class="save-btn" onclick="exportCSV()" style="background:rgba(255,255,255,0.15);margin-left:4px">📥 匯出</button>
   </div>
   <div class="sync-bar">
@@ -306,6 +306,7 @@ function confirmPin() {
   const v = document.getElementById('pinInput').value;
   if (v === PIN) {
     isAdmin = true;
+    document.getElementById('saveBtn').style.display = '';
     if (pinNextAction === 'add') { showPage('addPage'); }
     else if (pinNextAction === 'edit') { loadEditForm(); showPage('editPage'); }
     pinNextAction = '';
@@ -708,11 +709,6 @@ function renderDetail() {
     <div class="info-row"><span class="info-lbl">實際完成日</span><span class="info-val" style="color:${i.actualDate?'#3B6D11':'#bbb'}">${i.actualDate||'尚未完成'}</span></div>
     <div class="desc-box">${i.desc||'（無說明）'}</div>
     ${dueHTML}${photosHTML}${repliesHTML}
-    <div style="margin-top:12px;padding:12px;background:#f8f9fa;border-radius:8px;border:1px solid #e0e0e0">
-      <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:8px">新增回覆紀錄（所有人可填）</div>
-      <textarea class="form-textarea" id="replyInput" placeholder="輸入處理進度或回覆內容…" style="width:100%;margin-top:4px"></textarea>
-      <button class="blue-btn" style="width:100%;margin-top:8px;padding:12px" onclick="addReply()">✉ 送出回覆</button>
-    </div>
     ${adminHTML}`;
 }
 
