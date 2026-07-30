@@ -401,23 +401,22 @@ async function saveToSheet() {
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    const BATCH = 50;
-    for (let i = 0; i < issues.length; i += BATCH) {
-      const chunk = issues.slice(i, i + BATCH);
-      const isLast = (i + BATCH) >= issues.length;
-      await fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ issues: chunk, offset: i, total: issues.length, isLast: isLast })
-      });
-      await new Promise(r => setTimeout(r, 1000));
-    }
+    const body = 'data=' + encodeURIComponent(JSON.stringify({issues: issues}));
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: body
+    });
+    await new Promise(r => setTimeout(r, 2000));
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
     setSyncStatus('err', '儲存失敗，請重試');
     btn.textContent = '❌ 重試';
+    setTimeout(() => btn.textContent = '☁ 儲存', 3000);
+  }
+}
     setTimeout(() => btn.textContent = '☁ 儲存', 3000);
   }
 }
