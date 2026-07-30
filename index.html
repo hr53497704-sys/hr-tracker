@@ -261,8 +261,14 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwrta05sEupUiS5lSjx-
 
 const DEPT_SHORT = {'製造部':'製','機工':'機','膠工':'膠','電工':'電','電控':'控','設計':'設','業務':'業','採購':'採','生管':'生'};
 function getDeptBadge(dept) {
+  if (Array.isArray(dept)) {
+    return dept.slice(0,3).map(d => {
+      const s = DEPT_SHORT[d] || (d?d.slice(0,1):'?');
+      return '<span class="dept-badge">'+s+'</span>';
+    }).join('');
+  }
   const s = DEPT_SHORT[dept] || (dept?dept.slice(0,1):'?');
-  return `<span class="dept-badge">${s}</span>`;
+  return '<span class="dept-badge">'+s+'</span>';
 }
 
 const PIN = '1277';
