@@ -399,7 +399,7 @@ async function loadFromSheet() {
 
 async function syncOne(issue) {
   const url = SCRIPT_URL + '?action=update&data=' + encodeURIComponent(JSON.stringify(issue));
-  await fetch(url, {mode: 'no-cors'});
+  await fetch(url);
   await new Promise(r => setTimeout(r, 800));
 }
 
