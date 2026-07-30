@@ -369,31 +369,13 @@ async function saveToSheet() {
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    const payload = encodeURIComponent(JSON.stringify({ issues: issues }));
-    const cbName = 'cb_' + Date.now();
-    await new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      window[cbName] = function(result) {
-        delete window[cbName];
-        document.body.removeChild(script);
-        if (result && result.ok) resolve(result);
-        else reject(new Error('儲存回應錯誤'));
-      };
-      script.onerror = function() {
-        delete window[cbName];
-        document.body.removeChild(script);
-        reject(new Error('網路錯誤'));
-      };
-      script.src = SCRIPT_URL + '?action=save&callback=' + cbName + '&data=' + payload;
-      document.body.appendChild(script);
-      setTimeout(() => {
-        if (window[cbName]) {
-          delete window[cbName];
-          try { document.body.removeChild(script); } catch(e) {}
-          reject(new Error('逾時'));
-        }
-      }, 15000);
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ issues: issues })
     });
+    await new Promise(r => setTimeout(r, 3000));
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
