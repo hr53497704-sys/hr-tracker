@@ -398,37 +398,33 @@ async function loadFromSheet() {
 }
 
 
-function jsonp(url) {
-  return new Promise(function(resolve, reject) {
-    const cbName = 'cb_' + Date.now();
-    const script = document.createElement('script');
-    window[cbName] = function(data) {
-      delete window[cbName];
-      document.head.removeChild(script);
-      resolve(data);
+
+function iframeGet(url) {
+  return new Promise(function(resolve) {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    iframe.onload = function() {
+      setTimeout(function() {
+        try { document.body.removeChild(iframe); } catch(e) {}
+        resolve();
+      }, 500);
     };
-    script.onerror = function() {
-      delete window[cbName];
-      document.head.removeChild(script);
-      reject(new Error('JSONP error'));
+    iframe.onerror = function() {
+      try { document.body.removeChild(iframe); } catch(e) {}
+      resolve();
     };
-    script.src = url + '&callback=' + cbName;
-    document.head.appendChild(script);
+    document.body.appendChild(iframe);
     setTimeout(function() {
-      if (window[cbName]) {
-        delete window[cbName];
-        try { document.head.removeChild(script); } catch(e) {}
-        resolve({});
-      }
-    }, 5000);
+      try { document.body.removeChild(iframe); } catch(e) {}
+      resolve();
+    }, 8000);
   });
 }
 
 async function syncOne(issue) {
   const url = SCRIPT_URL + '?action=update&data=' + encodeURIComponent(JSON.stringify(issue));
-  try {
-    await jsonp(url);
-  } catch(e) {}
+  await iframeGet(url);
   await new Promise(r => setTimeout(r, 500));
 }
 
@@ -447,7 +443,7 @@ async function saveToSheet() {
       if (issue) await syncOne(issue);
     }
     changedIds.clear();
-    jsonp(SCRIPT_URL + '?action=synctable').catch(()=>{});
+    iframeGet(SCRIPT_URL + '?action=synctable');
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
@@ -963,4 +959,22 @@ function saveNew() {
     urgent:document.getElementById('f_urg').checked,
     date:document.getElementById('f_date').value||new Date().toISOString().slice(0,10),
     dept:Array.from(document.querySelectorAll('#f_dept_checks input:checked')).map(c=>c.value),
-    ass
+    assignee:document.getElementById('f_assignee').value.trim(),
+    desc:document.getElementById('f_desc').value.trim(),
+    targetDates:due?[{date:due,done:false}]:[],
+    replies:[]
+  });
+  changedIds.add(newId);
+  ['f_wo','f_client','f_title','f_desc','f_assignee','f_due'].forEach(id=>document.getElementById(id).value='');
+  document.querySelectorAll('#f_dept_checks input').forEach(cb=>cb.checked=false);
+  document.getElementById('f_urg').checked=false;
+  document.getElementById('f_date').value=new Date().toISOString().slice(0,10);
+  showList();
+}
+
+document.getElementById('pinInput').addEventListener('keypress', function(e){ if(e.key==='Enter') confirmPin(); });
+
+loadFromSheet();
+</script>
+</body>
+</html>
