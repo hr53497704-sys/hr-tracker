@@ -397,9 +397,18 @@ async function loadFromSheet() {
   renderList();
 }
 
+function pingUrl(url) {
+  return new Promise(function(resolve) {
+    const img = new Image();
+    img.onload = img.onerror = function() { resolve(); };
+    img.src = url + '&_t=' + Date.now();
+    setTimeout(resolve, 3000);
+  });
+}
+
 async function syncOne(issue) {
   const url = SCRIPT_URL + '?action=update&data=' + encodeURIComponent(JSON.stringify(issue));
-  await fetch(url);
+  await pingUrl(url);
   await new Promise(r => setTimeout(r, 500));
 }
 
@@ -418,8 +427,7 @@ async function saveToSheet() {
       if (issue) await syncOne(issue);
     }
     changedIds.clear();
-    // 非同步更新工單資料Tab，不影響主流程
-    fetch(SCRIPT_URL + '?action=synctable');
+    pingUrl(SCRIPT_URL + '?action=synctable');
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
@@ -948,4 +956,9 @@ function saveNew() {
   showList();
 }
 
-document.getElementById('pinInput').addEventListener('keypress', function(e){ if(e.key==='Enter') confirmPin
+document.getElementById('pinInput').addEventListener('keypress', function(e){ if(e.key==='Enter') confirmPin(); });
+
+loadFromSheet();
+</script>
+</body>
+</html>
