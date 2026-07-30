@@ -316,6 +316,7 @@ const SC = {open:'s-open',done:'s-done',wait:'s-wait'};
 
 let issues = [], nextId = 100, filterTab = 'all', filterUrg = false, filterDept = '', filterClient = '', isAdmin = false, currentId = null;
 let pinNextAction = '';
+let changedIds = new Set();
 
 document.getElementById('logoImg').src = LOGO_B64;
 document.getElementById('f_date').value = new Date().toISOString().slice(0,10);
@@ -396,18 +397,28 @@ async function loadFromSheet() {
   renderList();
 }
 
+async function syncOne(issue) {
+  const url = SCRIPT_URL + '?action=update&data=' + encodeURIComponent(JSON.stringify(issue));
+  await fetch(url, {mode: 'no-cors'});
+  await new Promise(r => setTimeout(r, 800));
+}
+
 async function saveToSheet() {
   const btn = document.getElementById('saveBtn');
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    const payload = JSON.stringify(issues);
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: payload
-    });
-    await new Promise(r => setTimeout(r, 3000));
+    // 傳送所有有標記變動的資料
+    if (changedIds.size === 0) {
+      setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
+      btn.textContent = '☁ 儲存';
+      return;
+    }
+    for (const id of changedIds) {
+      const issue = issues.find(i => String(i.id) === String(id));
+      if (issue) await syncOne(issue);
+    }
+    changedIds.clear();
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
@@ -576,6 +587,7 @@ function saveActualDate(id) {
   const d = document.getElementById('actualDate').value;
   if (!d) { alert('請選擇實際完成日'); return; }
   i.actualDate = d;
+  changedIds.add(i.id);
   renderDetail();
   alert('✅ 實際完成日已儲存：' + d + '\n\n請記得按頂部「☁ 儲存」同步到試算表！');
 }
@@ -585,6 +597,8 @@ function deleteIssue(id) {
   if (!i) return;
   if (!confirm('確定要刪除「' + i.title + '」？\n刪除後無法復原！')) return;
   issues = issues.filter(x => String(x.id) !== String(id));
+  // 刪除時直接用Script刪除
+  fetch(SCRIPT_URL + '?action=delete&id=' + id, {mode:'no-cors'});
   showList();
 }
 
@@ -847,27 +861,27 @@ function renderDetail() {
     ${dueHTML}${photosHTML}${repliesHTML}${adminHTML}`;
 }
 
-function changeStatus(st) { const i=issues.find(x=>x.id===currentId); if(i){i.status=st;renderDetail();} }
+function changeStatus(st) { const i=issues.find(x=>x.id===currentId); if(i){i.status=st;changedIds.add(currentId);renderDetail();} }
 function markDelayed() {
   const i=issues.find(x=>x.id===currentId);
   if (!i.targetDates||!i.targetDates.length) { alert('尚無預定完成日'); return; }
   const last=i.targetDates[i.targetDates.length-1];
   if (last.done) { alert('最後一筆已標記為延期'); return; }
-  last.done=true; renderDetail();
+  last.done=true; changedIds.add(currentId); renderDetail();
 }
 function addDue() {
   const d=document.getElementById('newDue').value;
   if (!d) { alert('請選擇日期'); return; }
   const i=issues.find(x=>x.id===currentId);
   if (!i.targetDates) i.targetDates=[];
-  i.targetDates.push({date:d,done:false}); renderDetail();
+  i.targetDates.push({date:d,done:false}); changedIds.add(currentId); renderDetail();
 }
 function addReply() {
   const txt=document.getElementById('replyInput').value.trim();
   if (!txt) { alert('請輸入回覆內容'); return; }
   const i=issues.find(x=>x.id===currentId);
   if (!i.replies) i.replies=[];
-  i.replies.push({date:new Date().toISOString().slice(0,10),text:txt}); renderDetail();
+  i.replies.push({date:new Date().toISOString().slice(0,10),text:txt}); changedIds.add(currentId); renderDetail();
 }
 
 function goEdit() {
@@ -903,6 +917,7 @@ function saveEdit() {
   i.date=document.getElementById('e_date').value||i.date;
   i.status=document.getElementById('e_status').value;
   i.urgent=document.getElementById('e_urg').checked;
+  changedIds.add(currentId);
   showPage('detailPage'); renderDetail();
 }
 
@@ -912,8 +927,9 @@ function saveNew() {
   const title=document.getElementById('f_title').value.trim();
   if (!wo||!client||!title) { alert('請填寫工令號碼、客戶名稱和問題標題'); return; }
   const due=document.getElementById('f_due').value;
+  const newId = nextId++;
   issues.unshift({
-    id:nextId++, wo, client, title,
+    id:newId, wo, client, title,
     status:document.getElementById('f_status').value,
     urgent:document.getElementById('f_urg').checked,
     date:document.getElementById('f_date').value||new Date().toISOString().slice(0,10),
@@ -923,6 +939,7 @@ function saveNew() {
     targetDates:due?[{date:due,done:false}]:[],
     replies:[]
   });
+  changedIds.add(newId);
   ['f_wo','f_client','f_title','f_desc','f_assignee','f_due'].forEach(id=>document.getElementById(id).value='');
   document.querySelectorAll('#f_dept_checks input').forEach(cb=>cb.checked=false);
   document.getElementById('f_urg').checked=false;
