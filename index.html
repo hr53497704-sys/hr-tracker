@@ -398,13 +398,37 @@ async function loadFromSheet() {
 }
 
 
+function jsonp(url) {
+  return new Promise(function(resolve, reject) {
+    const cbName = 'cb_' + Date.now();
+    const script = document.createElement('script');
+    window[cbName] = function(data) {
+      delete window[cbName];
+      document.head.removeChild(script);
+      resolve(data);
+    };
+    script.onerror = function() {
+      delete window[cbName];
+      document.head.removeChild(script);
+      reject(new Error('JSONP error'));
+    };
+    script.src = url + '&callback=' + cbName;
+    document.head.appendChild(script);
+    setTimeout(function() {
+      if (window[cbName]) {
+        delete window[cbName];
+        try { document.head.removeChild(script); } catch(e) {}
+        resolve({});
+      }
+    }, 5000);
+  });
+}
+
 async function syncOne(issue) {
   const url = SCRIPT_URL + '?action=update&data=' + encodeURIComponent(JSON.stringify(issue));
   try {
-    await fetch(url);
-  } catch(e) {
-    // 忽略CORS錯誤，資料已送出
-  }
+    await jsonp(url);
+  } catch(e) {}
   await new Promise(r => setTimeout(r, 500));
 }
 
@@ -423,7 +447,7 @@ async function saveToSheet() {
       if (issue) await syncOne(issue);
     }
     changedIds.clear();
-    fetch(SCRIPT_URL + '?action=synctable').catch(()=>{});
+    jsonp(SCRIPT_URL + '?action=synctable').catch(()=>{});
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
@@ -939,22 +963,4 @@ function saveNew() {
     urgent:document.getElementById('f_urg').checked,
     date:document.getElementById('f_date').value||new Date().toISOString().slice(0,10),
     dept:Array.from(document.querySelectorAll('#f_dept_checks input:checked')).map(c=>c.value),
-    assignee:document.getElementById('f_assignee').value.trim(),
-    desc:document.getElementById('f_desc').value.trim(),
-    targetDates:due?[{date:due,done:false}]:[],
-    replies:[]
-  });
-  changedIds.add(newId);
-  ['f_wo','f_client','f_title','f_desc','f_assignee','f_due'].forEach(id=>document.getElementById(id).value='');
-  document.querySelectorAll('#f_dept_checks input').forEach(cb=>cb.checked=false);
-  document.getElementById('f_urg').checked=false;
-  document.getElementById('f_date').value=new Date().toISOString().slice(0,10);
-  showList();
-}
-
-document.getElementById('pinInput').addEventListener('keypress', function(e){ if(e.key==='Enter') confirmPin(); });
-
-loadFromSheet();
-</script>
-</body>
-</html>
+    ass
