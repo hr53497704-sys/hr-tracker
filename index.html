@@ -401,8 +401,10 @@ async function loadFromSheet() {
 
 async function syncOne(issue) {
   const url = SCRIPT_URL + '?action=update&data=' + encodeURIComponent(JSON.stringify(issue));
-  await fetch(url, {mode: 'no-cors'}).catch(()=>{});
-  await new Promise(r => setTimeout(r, 1000));
+  const w = window.open(url, '_blank', 'width=1,height=1,left=-100,top=-100');
+  await new Promise(r => setTimeout(r, 3000));
+  try { if(w) w.close(); } catch(e) {}
+  await new Promise(r => setTimeout(r, 500));
 }
 
 async function saveToSheet() {
