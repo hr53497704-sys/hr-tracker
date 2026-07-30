@@ -401,26 +401,13 @@ async function saveToSheet() {
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    const data = encodeURIComponent(JSON.stringify({issues: issues}));
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.name = 'save_frame';
-    document.body.appendChild(iframe);
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = SCRIPT_URL;
-    form.target = 'save_frame';
-    form.style.display = 'none';
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'data';
-    input.value = JSON.stringify({issues: issues});
-    form.appendChild(input);
-    document.body.appendChild(form);
-    form.submit();
-    await new Promise(r => setTimeout(r, 4000));
-    document.body.removeChild(form);
-    document.body.removeChild(iframe);
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(issues)
+    });
+    await new Promise(r => setTimeout(r, 2000));
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
