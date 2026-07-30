@@ -399,33 +399,10 @@ async function loadFromSheet() {
 
 
 
-function iframeGet(url) {
-  return new Promise(function(resolve) {
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = url;
-    iframe.onload = function() {
-      setTimeout(function() {
-        try { document.body.removeChild(iframe); } catch(e) {}
-        resolve();
-      }, 500);
-    };
-    iframe.onerror = function() {
-      try { document.body.removeChild(iframe); } catch(e) {}
-      resolve();
-    };
-    document.body.appendChild(iframe);
-    setTimeout(function() {
-      try { document.body.removeChild(iframe); } catch(e) {}
-      resolve();
-    }, 8000);
-  });
-}
-
 async function syncOne(issue) {
   const url = SCRIPT_URL + '?action=update&data=' + encodeURIComponent(JSON.stringify(issue));
-  await iframeGet(url);
-  await new Promise(r => setTimeout(r, 500));
+  await fetch(url, {mode: 'no-cors'}).catch(()=>{});
+  await new Promise(r => setTimeout(r, 1000));
 }
 
 async function saveToSheet() {
@@ -443,7 +420,7 @@ async function saveToSheet() {
       if (issue) await syncOne(issue);
     }
     changedIds.clear();
-    iframeGet(SCRIPT_URL + '?action=synctable');
+    fetch(SCRIPT_URL + '?action=synctable', {mode:'no-cors'}).catch(()=>{});
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
