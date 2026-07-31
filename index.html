@@ -401,22 +401,28 @@ async function saveToSheet() {
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    const CHUNK_SIZE = 10;
+    const CHUNK_SIZE = 5;
     const total = Math.ceil(issues.length / CHUNK_SIZE);
     for (let i = 0; i < total; i++) {
       const chunk = issues.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
       const dataStr = encodeURIComponent(JSON.stringify(chunk));
       const url = SCRIPT_URL + '?action=chunk&index=' + i + '&total=' + total + '&data=' + dataStr;
       await fetch(url, { method: 'GET', mode: 'no-cors' });
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 1500));
       setSyncStatus('sync', '儲存中 ' + Math.round((i+1)/total*100) + '%...');
     }
-    await new Promise(r => setTimeout(r, 3000));
-    setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
-    btn.textContent = '☁ 儲存';
-    alert('✅ 儲存完成！請到試算表確認資料是否更新。');
+    await new Promise(r => setTimeout(r, 5000));
+    const check = await fetch(SCRIPT_URL + '?action=load');
+    const checkData = await check.json();
+    const savedCount = checkData.issues ? checkData.issues.length : 0;
+    if (savedCount >= issues.length - 2) {
+      setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW') + ' (' + savedCount + '筆)');
+      btn.textContent = '☁ 儲存';
+    } else {
+      throw new Error('驗證失敗，試算表只有' + savedCount + '筆，請重試');
+    }
   } catch(e) {
-    setSyncStatus('err', '儲存失敗，請重試');
+    setSyncStatus('err', e.message || '儲存失敗，請重試');
     btn.textContent = '❌ 重試';
     setTimeout(() => btn.textContent = '☁ 儲存', 3000);
   }
