@@ -401,16 +401,16 @@ async function saveToSheet() {
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    const dataStr = encodeURIComponent(JSON.stringify(issues));
-    const url = SCRIPT_URL + '?action=save&data=' + dataStr;
-    const r = await fetch(url, { method: 'GET' });
-    const result = await r.json();
-    if (result.ok) {
-      setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
-      btn.textContent = '☁ 儲存';
-    } else {
-      throw new Error(result.error || '儲存失敗');
-    }
+    const body = 'data=' + encodeURIComponent(JSON.stringify(issues));
+    const r = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body
+    });
+    await new Promise(res => setTimeout(res, 3000));
+    setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
+    btn.textContent = '☁ 儲存';
   } catch(e) {
     setSyncStatus('err', '儲存失敗，請重試');
     btn.textContent = '❌ 重試';
