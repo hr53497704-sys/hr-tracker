@@ -401,26 +401,17 @@ async function saveToSheet() {
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    await new Promise((resolve, reject) => {
-      const cbName = 'jsonp_cb_' + Date.now();
-      const script = document.createElement('script');
-      const timer = setTimeout(() => {
-        delete window[cbName];
-        document.body.removeChild(script);
-        reject(new Error('timeout'));
-      }, 15000);
-      window[cbName] = function(result) {
-        clearTimeout(timer);
-        delete window[cbName];
-        document.body.removeChild(script);
-        if (result && result.ok) resolve(result);
-        else reject(new Error(result ? result.error : '儲存失敗'));
-      };
-      const dataStr = encodeURIComponent(JSON.stringify(issues));
-      script.src = SCRIPT_URL + '?action=save&callback=' + cbName + '&data=' + dataStr;
-      script.onerror = () => { clearTimeout(timer); reject(new Error('script error')); };
-      document.body.appendChild(script);
-    });
+    const CHUNK_SIZE = 10;
+    const total = Math.ceil(issues.length / CHUNK_SIZE);
+    for (let i = 0; i < total; i++) {
+      const chunk = issues.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      const dataStr = encodeURIComponent(JSON.stringify(chunk));
+      const url = SCRIPT_URL + '?action=chunk&index=' + i + '&total=' + total + '&data=' + dataStr;
+      const r = await fetch(url);
+      const result = await r.json();
+      if (!result.ok) throw new Error(result.error || '分批儲存失敗');
+      setSyncStatus('sync', '儲存中 ' + Math.round((i+1)/total*100) + '%...');
+    }
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
