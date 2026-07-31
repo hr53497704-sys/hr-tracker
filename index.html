@@ -456,7 +456,7 @@ function exportCSV() {
     var data = issues.filter(function(i) {
       if (filterTab === 'done') { if (i.status !== 'done') return false; }
       else if (filterTab === 'overdue') { if (!isOverdue(i)) return false; }
-      else if (filterTab === 'all') { if (i.status === 'done') return false; }
+      else if (filterTab === 'all') { /* 全部tab匯出包含已完成 */ }
       else { if (i.status !== filterTab) return false; }
       if (filterUrg && !i.urgent) return false;
       if (filterDept && !getDepts(i.dept).map(d=>d.trim()).includes(filterDept.trim())) return false;
