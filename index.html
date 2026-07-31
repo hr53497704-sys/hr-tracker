@@ -378,7 +378,6 @@ async function loadFromSheet() {
     if (data.issues && Array.isArray(data.issues) && data.issues.length > 0) {
       issues = data.issues.map(i => ({
         ...i,
-        // 舊資料 progress 自動轉為 open
         status: i.status === 'progress' ? 'open' : i.status,
         date: String(i.date||'').slice(0,10),
         targetDates: Array.isArray(i.targetDates) ? i.targetDates.filter(d=>d&&d.date) : [],
@@ -404,10 +403,18 @@ async function saveToSheet() {
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    const encoded = encodeURIComponent(JSON.stringify(issues));
-    const url = SCRIPT_URL + '?action=save&data=' + encoded;
-    await fetch(url, {mode: 'no-cors'});
-    await new Promise(r => setTimeout(r, 2000));
+    const BATCH = 3;
+    const chunks = [];
+    for (let i = 0; i < issues.length; i += BATCH) {
+      chunks.push(issues.slice(i, i + BATCH));
+    }
+    for (let i = 0; i < chunks.length; i++) {
+      const url = SCRIPT_URL + '?action=chunk&index=' + i + '&total=' + chunks.length + '&data=' + encodeURIComponent(JSON.stringify(chunks[i]));
+      const r = await fetch(url);
+      const result = await r.json();
+      if (!result.ok) throw new Error(result.error || '儲存失敗');
+      await new Promise(r => setTimeout(r, 300));
+    }
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
