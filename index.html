@@ -316,7 +316,6 @@ const SC = {open:'s-open',done:'s-done',wait:'s-wait'};
 
 let issues = [], nextId = 100, filterTab = 'all', filterUrg = false, filterDept = '', filterClient = '', isAdmin = false, currentId = null;
 let pinNextAction = '';
-let changedIds = new Set();
 
 document.getElementById('logoImg').src = LOGO_B64;
 document.getElementById('f_date').value = new Date().toISOString().slice(0,10);
@@ -378,6 +377,7 @@ async function loadFromSheet() {
     if (data.issues && Array.isArray(data.issues) && data.issues.length > 0) {
       issues = data.issues.map(i => ({
         ...i,
+        // 舊資料 progress 自動轉為 open
         status: i.status === 'progress' ? 'open' : i.status,
         date: String(i.date||'').slice(0,10),
         targetDates: Array.isArray(i.targetDates) ? i.targetDates.filter(d=>d&&d.date) : [],
@@ -396,25 +396,18 @@ async function loadFromSheet() {
   renderList();
 }
 
-
-
 async function saveToSheet() {
   const btn = document.getElementById('saveBtn');
   btn.textContent = '儲存中…';
   setSyncStatus('sync', '儲存中...');
   try {
-    const BATCH = 3;
-    const chunks = [];
-    for (let i = 0; i < issues.length; i += BATCH) {
-      chunks.push(issues.slice(i, i + BATCH));
-    }
-    for (let i = 0; i < chunks.length; i++) {
-      const url = SCRIPT_URL + '?action=chunk&index=' + i + '&total=' + chunks.length + '&data=' + encodeURIComponent(JSON.stringify(chunks[i]));
-      const r = await fetch(url);
-      const result = await r.json();
-      if (!result.ok) throw new Error(result.error || '儲存失敗');
-      await new Promise(r => setTimeout(r, 300));
-    }
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(issues)
+    });
+    await new Promise(r => setTimeout(r, 2000));
     setSyncStatus('ok', '已儲存 · ' + new Date().toLocaleTimeString('zh-TW'));
     btn.textContent = '☁ 儲存';
   } catch(e) {
@@ -583,7 +576,6 @@ function saveActualDate(id) {
   const d = document.getElementById('actualDate').value;
   if (!d) { alert('請選擇實際完成日'); return; }
   i.actualDate = d;
-  changedIds.add(i.id);
   renderDetail();
   alert('✅ 實際完成日已儲存：' + d + '\n\n請記得按頂部「☁ 儲存」同步到試算表！');
 }
@@ -593,8 +585,6 @@ function deleteIssue(id) {
   if (!i) return;
   if (!confirm('確定要刪除「' + i.title + '」？\n刪除後無法復原！')) return;
   issues = issues.filter(x => String(x.id) !== String(id));
-  // 刪除時直接用Script刪除
-  fetch(SCRIPT_URL + '?action=delete&id=' + id, {mode:'no-cors'});
   showList();
 }
 
@@ -857,27 +847,27 @@ function renderDetail() {
     ${dueHTML}${photosHTML}${repliesHTML}${adminHTML}`;
 }
 
-function changeStatus(st) { const i=issues.find(x=>x.id===currentId); if(i){i.status=st;changedIds.add(currentId);renderDetail();} }
+function changeStatus(st) { const i=issues.find(x=>x.id===currentId); if(i){i.status=st;renderDetail();} }
 function markDelayed() {
   const i=issues.find(x=>x.id===currentId);
   if (!i.targetDates||!i.targetDates.length) { alert('尚無預定完成日'); return; }
   const last=i.targetDates[i.targetDates.length-1];
   if (last.done) { alert('最後一筆已標記為延期'); return; }
-  last.done=true; changedIds.add(currentId); renderDetail();
+  last.done=true; renderDetail();
 }
 function addDue() {
   const d=document.getElementById('newDue').value;
   if (!d) { alert('請選擇日期'); return; }
   const i=issues.find(x=>x.id===currentId);
   if (!i.targetDates) i.targetDates=[];
-  i.targetDates.push({date:d,done:false}); changedIds.add(currentId); renderDetail();
+  i.targetDates.push({date:d,done:false}); renderDetail();
 }
 function addReply() {
   const txt=document.getElementById('replyInput').value.trim();
   if (!txt) { alert('請輸入回覆內容'); return; }
   const i=issues.find(x=>x.id===currentId);
   if (!i.replies) i.replies=[];
-  i.replies.push({date:new Date().toISOString().slice(0,10),text:txt}); changedIds.add(currentId); renderDetail();
+  i.replies.push({date:new Date().toISOString().slice(0,10),text:txt}); renderDetail();
 }
 
 function goEdit() {
@@ -913,7 +903,6 @@ function saveEdit() {
   i.date=document.getElementById('e_date').value||i.date;
   i.status=document.getElementById('e_status').value;
   i.urgent=document.getElementById('e_urg').checked;
-  changedIds.add(currentId);
   showPage('detailPage'); renderDetail();
 }
 
@@ -923,9 +912,8 @@ function saveNew() {
   const title=document.getElementById('f_title').value.trim();
   if (!wo||!client||!title) { alert('請填寫工令號碼、客戶名稱和問題標題'); return; }
   const due=document.getElementById('f_due').value;
-  const newId = nextId++;
   issues.unshift({
-    id:newId, wo, client, title,
+    id:nextId++, wo, client, title,
     status:document.getElementById('f_status').value,
     urgent:document.getElementById('f_urg').checked,
     date:document.getElementById('f_date').value||new Date().toISOString().slice(0,10),
@@ -935,7 +923,6 @@ function saveNew() {
     targetDates:due?[{date:due,done:false}]:[],
     replies:[]
   });
-  changedIds.add(newId);
   ['f_wo','f_client','f_title','f_desc','f_assignee','f_due'].forEach(id=>document.getElementById(id).value='');
   document.querySelectorAll('#f_dept_checks input').forEach(cb=>cb.checked=false);
   document.getElementById('f_urg').checked=false;
