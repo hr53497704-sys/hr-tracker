@@ -451,7 +451,7 @@ function updateClientFilter() {
 function exportCSV() {
   function doExport() {
     var ExcelJS = window.ExcelJS;
-    var q = document.getElementById('searchInput').value.toLowerCase();
+    var q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
     var SM2 = {open:'待處理',done:'已完成',wait:'等待中'};
     var data = issues.filter(function(i) {
       if (filterTab === 'done') { if (i.status !== 'done') return false; }
@@ -461,7 +461,7 @@ function exportCSV() {
       if (filterUrg && !i.urgent) return false;
       if (filterDept && !getDepts(i.dept).map(d=>d.trim()).includes(filterDept.trim())) return false;
       if (filterClient && String(i.client||'').trim() !== filterClient.trim()) return false;
-      if (q && (i.wo+i.client+i.title+i.desc).toLowerCase().indexOf(q) < 0) return false;
+      if (q && !((i.wo||'')+(i.client||'')+(i.title||'')+(i.desc||'')+(i.assignee||'')).toLowerCase().includes(q)) return false;
       return true;
     });
     if (!data.length) { alert('目前沒有資料可以匯出！'); return; }
@@ -676,7 +676,13 @@ function toggleUrg() { filterUrg=!filterUrg; document.getElementById('urgBtn').c
 
 function renderList() {
   updateClientFilter();
-  const baseIssues = filterDept ? issues.filter(i => getDepts(i.dept).map(d=>d.trim()).includes(filterDept.trim())) : issues;
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const baseIssues = issues.filter(i => {
+    if (filterDept && !getDepts(i.dept).map(d=>d.trim()).includes(filterDept.trim())) return false;
+    if (filterClient && String(i.client||'').trim() !== filterClient.trim()) return false;
+    if (q && !`${i.wo}${i.client}${i.title}${i.desc}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
   const c={open:0,done:0,wait:0,overdue:0};
   baseIssues.forEach(i => {
     if (i.status !== 'done') {
@@ -693,7 +699,6 @@ function renderList() {
     <div class="stat-chip"><div class="stat-num" style="color:#cc0000">${c.overdue}</div><div class="stat-lbl">逾期</div></div>
     <div class="stat-chip"><div class="stat-num" style="color:#3B6D11">${c.done}</div><div class="stat-lbl">已完成</div></div>`;
 
-  const q = document.getElementById('searchInput').value.toLowerCase();
   const data = issues.filter(i => {
     if (filterTab === 'done') {
       if (i.status !== 'done') return false;
